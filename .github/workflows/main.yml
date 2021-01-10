@@ -37,8 +37,23 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      # Wating on TS 4.x+ support https://github.com/andoshin11/typescript-error-reporter-action/issues/13
       - name: Typecheck
-        uses: andoshin11/typescript-error-reporter-action@v1.0.2
+        run: npm run compile
+    
+      - name: ESLint
+        # npm script for ESLint
+        # eslint --output-file eslint_report.json --format json src
+        # See https://eslint.org/docs/user-guide/command-line-interface#options
+        run: npm run lint -- --output-file eslint_report.json --format json
+        # Continue to the next step even if this fails
+        continue-on-error: true
+
+      - name: Annotate Code Linting Results
+        uses: ataylorme/eslint-annotate-action@1.1.2
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          report-json: "eslint_report.json"
 
       - name: Jest Annotations & Coverage
         uses: mattallty/jest-github-action@v1.0.3
