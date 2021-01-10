@@ -29,14 +29,13 @@ jobs:
           node-version: '14'
       - uses: actions/cache@v2
         with:
-         path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
+      - name: TypeScript
         run: npm run compile
 
-- name: Jest Annotations & Coverage
-  uses: mattallty/jest-github-action@v1.0.3
+      - name: Jest Annotations & Coverage
+        uses: mattallty/jest-github-action@v1.0.3
