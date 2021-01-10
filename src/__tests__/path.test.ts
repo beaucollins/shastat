@@ -1,5 +1,5 @@
 import { Request } from '@fracture/serve';
-import { ParserType, success } from '@fracture/parse';
+import { success } from '@fracture/parse';
 import { Socket } from 'net';
 import { IncomingMessage } from 'http';
 import { alphaNumeric, numeric, param, path, PathParser, routePath, urlSlug } from '../path';
@@ -17,9 +17,9 @@ const requestFor = (url: string, method = 'GET'): Request => {
 
 describe('path', () => {
   describe('succeeds', () => {
-    type Case<P extends PathParser<unknown>> = [url: string, parser: P, expected: ParserType<P>];
+    type Case<P> = [url: string, parser: PathParser<P>, expected: P];
 
-    const testCase = <P extends PathParser<unknown>>(url: string, parser: P, expected: ParserType<P>): Case<P> => {
+    const testCase = <P>(url: string, parser: PathParser<P>, expected: P): Case<P> => {
       return [url, parser, expected];
     };
 

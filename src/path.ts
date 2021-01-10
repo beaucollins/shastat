@@ -127,7 +127,7 @@ export function path<T extends (string | Parser<[Part, string], string>)[]>(
     return typeof part === 'string' ? token(part) : part;
   });
   const parser: Parser<ParsedTuple<T>, string> = complete((url) => {
-    const results: Array<ParserType<T[number]>[0]> = [];
+    const results: Array<ParsedTuple<T>[number]> = [];
     let path = url;
     for (const part of parsers) {
       const result = part(path);
