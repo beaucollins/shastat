@@ -41,6 +41,11 @@ jobs:
       - name: Typecheck
         run: npm run compile
     
+      - name: Prettier
+        uses: actionsx/prettier@v2
+        with:
+          args: --check .
+
       - name: ESLint
         # npm script for ESLint
         # eslint --output-file eslint_report.json --format json src
