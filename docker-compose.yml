@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    ports:
+      - '6000:6000'
+    volumes:
+      - ./src:/var/app/src
+      - ./package.json:/var/app/package.json
+    environment:
+      POSTGRES_CONNECTION_STRING: postgres://postgres:demo@db/
+
+  db:
+    image: postgres:12
+    environment:
+      POSTGRES_PASSWORD: demo

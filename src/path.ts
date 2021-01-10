@@ -1,4 +1,4 @@
-import { Request } from '@fracture/serve';
+import { Handler, Request, Responder, Route } from '@fracture/serve';
 import {
   Parser,
   Success,
@@ -10,54 +10,45 @@ import {
   mapFailure,
   mapParser,
   oneOf,
-  isSuccess,
+  isExactly,
 } from '@fracture/parse';
+import { complete, isChar, many, oneOrMore } from './tokenizer';
 
 type Token<T extends string> = [type: 'token', token: T];
 type Param<Name extends string, T> = [type: 'param', name: Name, value: T];
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Part = Token<any> | Param<any, any>;
 
 export type PathParser<T> = Parser<T, Request>;
 
-export const isChar = <T extends string[]>(...char: T): Parser<[T[number], string], string> => {
-  return (incoming) => {
-    for (const option of char) {
-      if (incoming.indexOf(option) === 0) {
-        return success([incoming.slice(0, option.length), incoming.slice(option.length)]);
-      }
-    }
-    return failure(incoming, `${incoming} does not match any ${JSON.stringify(char)}`);
-  };
+type Routes<T> = {
+  GET?: Responder<T>;
+  POST?: Responder<T>;
+  PUT?: Responder<T>;
+  PATCH?: Responder<T>;
 };
 
-export function many<O, I>(parser: Parser<[O, I], I>): (incoming: I) => Success<[O[], I]> {
-  return (incoming) => {
-    let input = incoming;
-    const results: O[] = [];
-    do {
-      const result = parser(input);
-      if (isSuccess(result)) {
-        results.push(result.value[0]);
-        input = result.value[1];
-      } else {
-        return success([results, input]);
-      }
-    } while (true);
+export function routePath<T>(path: Route<T>, routes: Routes<T>): Handler {
+  const methodIs = oneOf(isExactly('GET'), isExactly('POST'));
+  const method = (request: Request) => methodIs(request.method);
+  const matcher = matches(method, path);
+  return async (request) => {
+    const result = await matcher(request);
+    if (isFailure(result)) {
+      return result;
+    }
+
+    const [verb, value] = result.value;
+    const responder = routes[verb];
+    if (responder == null) {
+      return failure(request, `no handler for ${verb}`);
+    }
+    return success(await responder(value, request));
   };
 }
 
-export const oneOrMore = <O, I>(parser: Parser<[O, I], I>): Parser<[O[], I], I> => {
-  return (incoming) => {
-    const firstResult = parser(incoming);
-    if (!isSuccess(firstResult)) {
-      return firstResult;
-    }
-    const rest = many(parser)(firstResult.value[1]);
-    return success([[firstResult.value[0], ...rest.value[0]], rest.value[1]]);
-  };
-};
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 type SequenceOf<I, T extends readonly Parser<[any, I], I>[]> = T extends []
   ? []
   : T extends [Parser<[infer U, I], I>]
@@ -67,9 +58,12 @@ type SequenceOf<I, T extends readonly Parser<[any, I], I>[]> = T extends []
     ? [U, ...SequenceOf<I, P>]
     : never
   : never;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SequenceParser<T extends any[], I> = Parser<[T, I], I>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const sequence = <T extends Readonly<Parser<[any, I], I>[]>, I>(
   ...parsers: T
 ): SequenceParser<SequenceOf<I, T>, I> => {
@@ -126,15 +120,6 @@ export function param<Name extends string, T>(
   };
 }
 
-export const complete = <T>(parser: Parser<[T, string], string>): Parser<T, string> => {
-  return mapParser(parser, ([value, remaining]) => {
-    if (remaining != '') {
-      return failure(remaining, `incomplete: '${remaining}'`);
-    }
-    return success(value);
-  });
-};
-
 export function path<T extends (string | Parser<[Part, string], string>)[]>(
   ...parts: T
 ): Parser<ParsedTuple<T>, Request> {
@@ -156,6 +141,47 @@ export function path<T extends (string | Parser<[Part, string], string>)[]>(
     return success([results as ParsedTuple<T>, path]);
   });
   return (request) => mapFailure(parser(request.url), (fail) => failure(request, fail.reason));
+}
+
+export function methodIs<T extends string>(methodName: T): Route<T> {
+  return (request) =>
+    request.method === methodName ? success(methodName) : failure(request, `${request.method} is not ${methodName}`);
+}
+
+type RouteAll<T> = T extends []
+  ? []
+  : T extends Route<unknown>[]
+  ? T extends [Route<infer U>, ...infer Rest]
+    ? [U, ...RouteAll<Rest>]
+    : T extends [Route<infer U>]
+    ? [U]
+    : never
+  : never;
+
+export function matches<T extends Route<unknown>[]>(...matchers: T): Route<RouteAll<T>> {
+  return async (request) => {
+    const matched: Array<RouteAll<T>[number]> = [];
+    for (const matcher of matchers) {
+      const result = await matcher(request);
+      if (isFailure(result)) {
+        return result;
+      }
+      matched.push(result.value);
+    }
+    return success(matched as RouteAll<T>);
+  };
+}
+
+export function method<M extends string, T>(method: M, route: Route<T>): Route<[M, T]> {
+  return matches(methodIs(method), route);
+}
+
+export function get<T>(route: Route<T>): Route<['GET', T]> {
+  return method('GET', route);
+}
+
+export function post<T>(route: Route<T>): Route<['POST', T]> {
+  return method('POST', route);
 }
 
 function isCaseInsensitiveChar<T extends string[]>(...chars: T): Parser<[string, string], string> {
@@ -257,3 +283,7 @@ export const urlSlug: Parser<[string, string], string> = mapParser(
   sequence(alphaNumeric, oneOrMore(oneOf(isChar('-'), alphaNumeric))),
   ([[leading, rest], remaining]) => success([leading.concat(rest.join('')), remaining]),
 );
+
+export const mapRoute = <A, B>(route: Route<A>, map: (route: A) => ReturnType<Route<B>>): Route<B> => {
+  return async (request) => mapSuccess(await route(request), map);
+};
