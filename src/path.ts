@@ -2,7 +2,6 @@ import { Handler, Request, Responder, Route } from '@fracture/serve';
 import {
   Parser,
   Success,
-  ParserType,
   isFailure,
   failure,
   success,

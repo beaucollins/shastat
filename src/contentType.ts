@@ -9,6 +9,6 @@ type ContentTypeParser = Parser<ContentType>;
 
 export function parseContentType(): ContentTypeParser {
   return mapParser(isString, () => {
-    return failure('not implemnted' as const, 'Not implemented');
+    return failure('not implemented' as const, 'Not implemented');
   });
 }
