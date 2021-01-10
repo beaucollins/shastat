@@ -11,7 +11,7 @@ import {
   oneOf,
   isExactly,
 } from '@fracture/parse';
-import { complete, isChar, many, oneOrMore } from './tokenizer';
+import { complete, isCaseInsensitiveChar, isChar, many, oneOrMore, sequence } from './tokenizer';
 
 type Token<T extends string> = [type: 'token', token: T];
 type Param<Name extends string, T> = [type: 'param', name: Name, value: T];
@@ -46,43 +46,6 @@ export function routePath<T>(path: Route<T>, routes: Routes<T>): Handler {
     return success(await responder(value, request));
   };
 }
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type SequenceOf<I, T extends readonly Parser<[any, I], I>[]> = T extends []
-  ? []
-  : T extends [Parser<[infer U, I], I>]
-  ? [U]
-  : T extends [Parser<[infer U, I], I>, ...infer P]
-  ? P extends Parser<[any, I], I>[]
-    ? [U, ...SequenceOf<I, P>]
-    : never
-  : never;
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SequenceParser<T extends any[], I> = Parser<[T, I], I>;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const sequence = <T extends Readonly<Parser<[any, I], I>[]>, I>(
-  ...parsers: T
-): SequenceParser<SequenceOf<I, T>, I> => {
-  return (incoming) => {
-    const values: SequenceOf<I, T>[number][] = [];
-    let input = incoming;
-    for (const parser of parsers) {
-      const result = parser(input);
-      if (isFailure(result)) {
-        return result;
-      }
-      const {
-        value: [value, rest],
-      } = result;
-      input = rest;
-      values.push(value);
-    }
-    return success([values as SequenceOf<I, T>, input]);
-  };
-};
 
 export function token<T extends string>(value: T): Parser<[Token<T>, string], string> {
   return (incoming) => {
@@ -181,18 +144,6 @@ export function get<T>(route: Route<T>): Route<['GET', T]> {
 
 export function post<T>(route: Route<T>): Route<['POST', T]> {
   return method('POST', route);
-}
-
-function isCaseInsensitiveChar<T extends string[]>(...chars: T): Parser<[string, string], string> {
-  return (incoming) => {
-    const lower = incoming.toLowerCase();
-    for (const option of chars) {
-      if (lower.indexOf(option.toLowerCase()) === 0) {
-        return success([incoming.slice(0, option.length), incoming.slice(option.length)]);
-      }
-    }
-    return failure(incoming, `Does not match insensitive ${JSON.stringify(chars)}`);
-  };
 }
 
 const Ints = {
