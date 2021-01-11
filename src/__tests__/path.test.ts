@@ -1,27 +1,15 @@
 import { Request } from '@fracture/serve';
-import { Result, isSuccess, Success, Failure, ParserType } from '@fracture/parse';
+import { success } from '@fracture/parse';
 import { Socket } from 'net';
 import { IncomingMessage } from 'http';
-import { alphaNumeric, complete, isChar, numeric, oneOrMore, param, path, PathParser, urlSlug } from '../path';
+import { alphaNumeric, numeric, param, path, PathParser, routePath, urlSlug } from '../path';
+import { requireFailure, requireSuccess } from './assertResult';
+import { complete } from '../tokenizer';
 
-function requireSuccess<T, F>(result: Result<T, F>): Success<T> {
-  if (!isSuccess(result)) {
-    throw new Error(result.reason);
-  }
-  return result;
-}
-
-function requireFailure<T, F>(result: Result<T, F>): Failure<F> {
-  if (isSuccess(result)) {
-    throw new Error('Expected failure');
-  }
-  return result;
-}
-
-const requestFor = (url: string): Request => {
+const requestFor = (url: string, method = 'GET'): Request => {
   return {
     request: new IncomingMessage(new Socket()),
-    method: 'GET',
+    method,
     url,
     headers: {},
   };
@@ -29,9 +17,9 @@ const requestFor = (url: string): Request => {
 
 describe('path', () => {
   describe('succeeds', () => {
-    type Case<P extends PathParser<unknown>> = [url: string, parser: P, expected: ParserType<P>];
+    type Case<P> = [url: string, parser: PathParser<P>, expected: P];
 
-    const testCase = <P extends PathParser<unknown>>(url: string, parser: P, expected: ParserType<P>): Case<P> => {
+    const testCase = <P>(url: string, parser: PathParser<P>, expected: P): Case<P> => {
       return [url, parser, expected];
     };
 
@@ -88,23 +76,6 @@ describe('path', () => {
   });
 });
 
-describe('oneOrMore', () => {
-  const cases = [
-    ['135', ['1', '3', '5']],
-    ['1', ['1']],
-  ] as const;
-
-  cases.forEach(([str, expected]) => {
-    it(`parses ${str}`, () => {
-      expect(requireSuccess(complete(oneOrMore(isChar('1', '3', '5', '7', '9')))(str)).value).toEqual(expected);
-    });
-  });
-
-  it('parses at least one', () => {
-    expect(requireSuccess(oneOrMore(isChar('X'))('XY')).value).toEqual([['X'], 'Y']);
-  });
-});
-
 describe('numeric', () => {
   it('parses', () => expect(requireSuccess(complete(numeric)('901')).value).toEqual(901));
   it('fails', () => expect(requireFailure(complete(numeric)('0901')).reason).toMatch(/incomplete/));
@@ -118,5 +89,12 @@ describe('urlSlug', () => {
 
   cases.forEach(([input, result]) => {
     it(`parses ${input}`, () => expect(requireSuccess(urlSlug(input)).value).toEqual(result));
+  });
+});
+
+describe('routePath', () => {
+  it('fails on missing verb', async () => {
+    const result = await routePath(() => success('hello'), {})(requestFor('/anything', 'POST'));
+    expect(requireFailure(result).reason).toBe('no handler for POST');
   });
 });
