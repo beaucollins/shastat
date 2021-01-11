@@ -1,5 +1,5 @@
 import { parseContentType } from '../contentType';
-import { requireSuccess } from './assertResult';
+import { requireFailure, requireSuccess } from './assertResult';
 
 describe('parseContentType', () => {
   it('parses type and subtype', () => {
@@ -18,6 +18,13 @@ describe('parseContentType', () => {
         ['charset', 'utf-8'],
         ['lol', 'something=else'],
       ],
+    });
+  });
+
+  it('fails to parse invalid tokens', () => {
+    expect(requireFailure(parseContentType('application/json;char\nset=utf-8;lol="something=else"'))).toMatchObject({
+      type: 'failure',
+      reason: 'incomplete: \';char\nset=utf-8;lol="something=else"\'',
     });
   });
 });
