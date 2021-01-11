@@ -71,6 +71,11 @@ describe('server', () => {
     });
   });
 
+  it('POST /foo 501', async () => {
+    const [status] = await testRequest('POST', '/foo');
+    expect(status).toBe(501);
+  });
+
   describe('GET /foo/bar', () => {
     it('responds with 404 when gateway errors', async () => {
       const [status, , body] = await testRequest('GET', '/foo/bar');
