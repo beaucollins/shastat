@@ -8,7 +8,7 @@
     "start": "ts-node -T src/server",
     "dev": "nodemon",
     "test": "jest",
-    "lint": "eslint",
+    "lint": "eslint .",
     "lint:fix": "eslint --fix",
     "prettier": "prettier --write",
     "migrate": "ts-node -T src/cmd/migrate"
