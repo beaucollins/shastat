@@ -4,15 +4,30 @@ module.exports = {
     browser: true,
     es2021: true,
   },
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
-  parser: '@typescript-eslint/parser',
+  extends: ['eslint:recommended', 'prettier'],
   parserOptions: {
     ecmaVersion: 12,
     sourceType: 'module',
   },
-  plugins: ['@typescript-eslint', 'prettier'],
+  plugins: ['prettier'],
   rules: {
     'prettier/prettier': [2],
-    '@typescript-eslint/no-unused-vars': [2, { argsIgnorePattern: '^_' }],
   },
+  overrides: [
+    {
+      files: ['**/*.ts'],
+      parser: '@typescript-eslint/parser',
+      extends: ['plugin:@typescript-eslint/recommended'],
+      plugins: ['@typescript-eslint'],
+      rules: {
+        '@typescript-eslint/no-unused-vars': [2, { argsIgnorePattern: '^_' }],
+      },
+    },
+    {
+      files: ['**/__tests__/**'],
+      rules: {
+        '@typescript-eslint/no-non-null-assertion': 0,
+      },
+    },
+  ],
 };

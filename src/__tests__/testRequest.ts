@@ -54,5 +54,5 @@ export async function testRequest(
 
   await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 
-  return [request.statusCode ?? 400, request.headers, request];
+  return [request.statusCode!, request.headers, request];
 }

@@ -207,6 +207,6 @@ export const mapRoute = <A, B>(route: Route<A>, map: (route: A) => ReturnType<Ro
   return async (request) => mapSuccess(await route(request), map);
 };
 
-export function paramValue<T>(param: Param<any, T>): T {
+export function paramValue<T, N extends string>(param: Param<N, T>): T {
   return param[2];
 }
