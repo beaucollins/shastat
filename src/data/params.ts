@@ -1,13 +1,16 @@
-import { success, Success } from '@fracture/parse';
-import { Gateway } from './gateway';
-import { Foo } from './generated';
+import { Success, success } from '@fracture/parse';
 
-type Resource<T, P> = Success<['found', T] | ['not_found', P, Error]>;
+type Found<T> = [status: 'found', resource: T];
+type NotFound<T> = [status: 'not_found', param: T, reason: Error];
+type Resource<T, P> = Success<Found<T> | NotFound<P>>;
 
-export const queryFoo = <T>(getId: (params: T) => string, getFoo: Gateway['getFoo']) => (
-  params: T,
-): Promise<Resource<Foo, string>> =>
-  getFoo(getId(params)).then(
-    (foo) => success(['found', foo]),
-    (error) => success(['not_found', getId(params), error]),
-  );
+const found = <T>(resource: T): Found<T> => ['found', resource];
+
+const notFoundWith = <P>(param: P) => (error: Error): NotFound<P> => ['not_found', param, error];
+
+export const resourceFromParam = <P, R, T>(fetcher: (param: P) => Promise<R>, getParam: (params: T) => P) => {
+  return (params: T): Promise<Resource<R, P>> => {
+    const param = getParam(params);
+    return fetcher(param).then(found, notFoundWith(param)).then(success);
+  };
+};

@@ -186,44 +186,13 @@ export const numeric: Parser<[number, string], string> = oneOf(
 
 export const alphaNumeric: Parser<[string, string], string> = mapParser(
   oneOrMore(
+    // prettier-ignore
     isCaseInsensitiveChar(
-      'a',
-      'b',
-      'c',
-      'd',
-      'e',
-      'f',
-      'g',
-      'h',
-      'i',
-      'j',
-      'k',
-      'l',
-      'm',
-      'n',
-      'o',
-      'p',
-      'q',
-      'r',
-      's',
-      't',
-      'u',
-      'v',
-      'w',
-      'x',
-      'y',
-      'z',
-      '0',
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-      '0',
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h',
+      'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+      'q', 'r', 's', 't', 'u', 'v', 'w', 'x',
+      'y', 'z', '0', '1', '2', '3', '4', '5',
+      '6', '7', '8', '9', '0',
     ),
   ),
   ([chars, remaining]) => success([chars.join(''), remaining]),
@@ -237,3 +206,7 @@ export const urlSlug: Parser<[string, string], string> = mapParser(
 export const mapRoute = <A, B>(route: Route<A>, map: (route: A) => ReturnType<Route<B>>): Route<B> => {
   return async (request) => mapSuccess(await route(request), map);
 };
+
+export function paramValue<T>(param: Param<any, T>): T {
+  return param[2];
+}
