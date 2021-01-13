@@ -6,13 +6,13 @@ type Type = typeof types[number];
 
 type Parameter = [name: string, value: string];
 
-type ContentType = {
+export type ContentType = {
   type: Type;
   subtype: string;
   parameters: Parameter[];
 };
 
-type ContentTypeParser = Parser<ContentType>;
+type ContentTypeParser = Parser<ContentType, any>;
 
 const specials = (['(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']', '?', '='] as const).map((char) =>
   char.charCodeAt(0),
@@ -68,7 +68,7 @@ const typeAndSubtype: Tokenizer<[Type, string]> = mapParser(
 
 const maybeParameters = many(isParameter);
 
-const isContentType: Parser<ContentType> = mapParser(
+const isContentType: Parser<ContentType, string> = mapParser(
   complete(sequence(typeAndSubtype, maybeParameters)),
   ([[type, subtype], parameters]) => {
     return success({ type, subtype, parameters });
@@ -78,4 +78,4 @@ const isContentType: Parser<ContentType> = mapParser(
 /**
  * https://www.mhonarc.org/~ehood/MIME/1521/04_Content-Type.html
  */
-export const parseContentType: ContentTypeParser = mapParser(isString, isContentType);
+export const parseContentType: ContentTypeParser = mapParser<string, ContentType, unknown>(isString, isContentType);

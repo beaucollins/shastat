@@ -11,7 +11,9 @@ export type Foo_AllTypes = [
   }
 ]
 export interface Foo_QueryTypeMap {
+  [`INSERT INTO foo(id, sha) VALUES ($1, $2) RETURNING *`]: Foo_AllTypes[0]
   [`SELECT * FROM foo WHERE id = $1`]: Foo_AllTypes[0]
+  [`SELECT * FROM foo WHERE sha=$1`]: Foo_AllTypes[0]
 }
 
 export type Foo_UnionType = Foo_QueryTypeMap[keyof Foo_QueryTypeMap]
@@ -21,4 +23,4 @@ export type Foo = {
 }
 export const Foo = {} as Foo
 
-export const Foo_meta_v0 = [{"properties":[{"name":"id","value":"unknown","description":"pg_type.typname: bpchar"},{"name":"sha","value":"unknown","description":"pg_type.typname: bpchar"}],"description":"SELECT * FROM foo WHERE id = $1"}]
+export const Foo_meta_v0 = [{"properties":[{"name":"id","value":"unknown","description":"pg_type.typname: bpchar"},{"name":"sha","value":"unknown","description":"pg_type.typname: bpchar"}],"description":"INSERT INTO foo(id, sha) VALUES ($1, $2) RETURNING *"},{"properties":[{"name":"id","value":"unknown","description":"pg_type.typname: bpchar"},{"name":"sha","value":"unknown","description":"pg_type.typname: bpchar"}],"description":"SELECT * FROM foo WHERE id = $1"},{"properties":[{"name":"id","value":"unknown","description":"pg_type.typname: bpchar"},{"name":"sha","value":"unknown","description":"pg_type.typname: bpchar"}],"description":"SELECT * FROM foo WHERE sha=$1"}]

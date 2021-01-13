@@ -1,26 +1,13 @@
-import { IncomingMessage, ServerResponse } from 'http';
-import { Socket } from 'net';
-import { Gateway } from '../data/gateway';
-import { createService } from '../service';
 import { readJSON } from './readBody';
-import { overrideGateway } from './testGateway';
+import { testRequest } from './testRequest';
 
-async function testRequest(method: 'GET' | 'POST' | 'HEAD', url: string, gateway?: Partial<Gateway>) {
-  const message = new IncomingMessage(new Socket());
-  message.url = url;
-  message.method = method;
-  const response = new ServerResponse(message);
-
-  return await createService(overrideGateway(gateway ?? {}))(message, response);
-}
-
-describe('server', () => {
+describe('service', () => {
   it('404s', async () => {
     const [status, headers, body] = await testRequest('GET', '/not-a-valid-url');
 
     expect(status).toBe(404);
     expect(headers).toMatchObject({
-      'content-length': expect.any(Number),
+      'content-length': expect.any(String),
       'content-type': 'application/json',
     });
     expect(await readJSON(body)).toEqual({
@@ -34,7 +21,7 @@ describe('server', () => {
     expect(status).toBe(200);
 
     expect(headers).toMatchObject({
-      'content-length': expect.any(Number),
+      'content-length': expect.any(String),
       'content-type': 'application/json',
     });
 
@@ -62,7 +49,10 @@ describe('server', () => {
   });
 
   it('POST /greet/alice/from/bob', async () => {
-    const [status, , body] = await testRequest('POST', '/greet/bob/from/alice');
+    const [status, , body] = await testRequest(
+      ['POST', 'application/json', 'identity', Buffer.from('')],
+      '/greet/bob/from/alice',
+    );
     expect(status).toBe(201);
     expect(await readJSON(body)).toEqual({
       whatsup: 'doc',
@@ -72,8 +62,11 @@ describe('server', () => {
   });
 
   it('POST /foo 501', async () => {
-    const [status] = await testRequest('POST', '/foo');
-    expect(status).toBe(501);
+    const [status] = await testRequest(
+      ['POST', 'application/json', 'identity', Buffer.from(JSON.stringify({ sha: 'hello' }))],
+      '/foo',
+    );
+    expect(status).toBe(424);
   });
 
   describe('GET /foo/bar', () => {

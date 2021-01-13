@@ -1,19 +1,33 @@
 import { AddressInfo } from 'net';
-import { IncomingHttpHeaders, request } from 'http';
+import { IncomingHttpHeaders, request, Server } from 'http';
 import { listen } from '../server';
 import { defaultTestGateway } from './testGateway';
 
 describe('server', () => {
-  it('listens', async () => {
-    const server = await new Promise<ReturnType<typeof listen>>((resolve) => {
-      const http = listen(defaultTestGateway, 0).on('listening', () => {
-        resolve(http);
-      });
+  const server = new Promise<Server>((resolve) => {
+    const http = listen(defaultTestGateway, 0).on('listening', () => {
+      resolve(http);
     });
+  });
 
-    const { port } = server.address() as AddressInfo;
+  const send = async ({ path, method = 'GET' }: { path: string; method?: string; body?: NodeJS.ReadableStream }) => {
+    const { port } = (await server).address() as AddressInfo;
+    return request({ port, method, path, host: 'localhost' });
+  };
 
-    const req = request({ port, host: 'localhost', path: '/hello' });
+  afterAll(() =>
+    server.then(
+      (server) =>
+        new Promise<void>((resolve, reject) => {
+          server.close((error) => {
+            error == null ? resolve() : reject(error);
+          });
+        }),
+    ),
+  );
+
+  it('listens', async () => {
+    const req = await send({ path: '/hello' });
 
     const res = new Promise<[number | undefined, IncomingHttpHeaders, Buffer[]]>((resolve, reject) => {
       req.on('response', async (response) => {
@@ -39,11 +53,5 @@ describe('server', () => {
     expect(JSON.parse(Buffer.concat(body).toString('utf-8'))).toMatchObject({
       hello: 'world',
     });
-
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => {
-        error == null ? resolve() : reject(error);
-      }),
-    );
   });
 });
