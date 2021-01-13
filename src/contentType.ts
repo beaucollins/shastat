@@ -12,6 +12,8 @@ export type ContentType = {
   parameters: Parameter[];
 };
 
+// parsers cant accept any value
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ContentTypeParser = Parser<ContentType, any>;
 
 const specials = (['(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']', '?', '='] as const).map((char) =>

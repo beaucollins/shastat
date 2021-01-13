@@ -27,18 +27,20 @@ const header = <T>(headerName: string, defaultValue: T): Parser<T | string, Requ
 const contentTypeHeader = mapParser(header('content-type', undefined), parseContentType);
 const contentEncodingHeader = header('content-encoding', 'identity');
 
-function parseKeys<T extends { [K: string]: Parser<any, any> }>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseKeys<T extends { [K: string]: Parser<unknown, any> }>(
   parsers: T,
-): Parser<{ [K in keyof T]: ParserType<T[K]> }, any> {
+): Parser<{ [K in keyof T]: ParserType<T[K]> }, unknown> {
   return (value) => {
     const keyed = {} as { [K in keyof T]: ParserType<T[K]> };
 
     for (const key in parsers) {
-      const result = parsers[key](value);
+      const parser = parsers[key];
+      const result = parser(value);
       if (isFailure(result)) {
         return failure(value, result.reason);
       }
-      keyed[key] = result.value;
+      keyed[key] = result.value as ParserType<typeof parser>;
     }
     return success(keyed);
   };
