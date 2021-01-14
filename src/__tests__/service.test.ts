@@ -1,3 +1,5 @@
+import { IncomingHttpHeaders } from 'http';
+import { Gateway } from '../data/gateway';
 import { readJSON } from './readBody';
 import { testRequest } from './testRequest';
 
@@ -86,4 +88,54 @@ describe('service', () => {
       expect(await readJSON(body)).toEqual({ foo });
     });
   });
+
+  type TestCase = Readonly<
+    | [
+        method: 'GET' | 'POST',
+        path: string,
+        responseCode: number,
+        requestBody: Buffer | null,
+        response: [any] | [any, IncomingHttpHeaders],
+        gatewayOverride: Partial<Gateway>,
+      ]
+    | [
+        method: 'GET' | 'POST',
+        path: string,
+        responseCode: number,
+        requestBody: Buffer | null,
+        response: [any] | [any, IncomingHttpHeaders],
+      ]
+  >;
+
+  const requestCases: Readonly<TestCase[]> = [
+    ['GET', '/path', 404, null, [{ status: 'Not Found folks' }]],
+    ['POST', '/path', 404, null, [{ status: expect.any(String) }]],
+    ['GET', '/foo/sha/abc', 404, null, [{ error: expect.any(String), id: 'abc', status: 'not_found' }]],
+    ['POST', '/foo', 424, Buffer.from('{}'), [{ error: /^Failed at 'sha'/ }]],
+    [
+      'POST',
+      '/foo',
+      201,
+      Buffer.from(JSON.stringify({ sha: String(Math.random() * 1000) })),
+      [{ foo: expect.objectContaining({ id: 'lol', sha: expect.any(String) }) }],
+      { createFoo: ({ sha }) => Promise.resolve({ id: 'lol', sha }) },
+    ],
+  ];
+
+  it.each(requestCases)(
+    '%s %s %d',
+    async (method, path, responseCode, requestBody, [responseMatch, responseHeaders], gateway = undefined) => {
+      const [statusCode, headers, body] = await testRequest(
+        method === 'POST' ? ['POST', 'application/json', 'identity', requestBody ?? Buffer.from('')] : method,
+        path,
+        gateway,
+      );
+
+      expect(statusCode).toEqual(responseCode);
+      if (responseHeaders) {
+        expect(headers).toMatchObject(responseHeaders);
+      }
+      expect(await readJSON(body)).toMatchObject(responseMatch);
+    },
+  );
 });

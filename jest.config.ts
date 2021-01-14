@@ -1,7 +1,8 @@
-// eslint-disable-next-line no-undef
-module.exports = {
-  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!**/__tests__/**', '!**/node_modules/**', '!**/vendor/**'],
+import type { Config } from '@jest/types';
+
+const config: Config.InitialOptions = {
   preset: 'ts-jest',
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!**/__tests__/**', '!**/node_modules/**', '!**/vendor/**'],
   testEnvironment: 'node',
   testPathIgnorePatterns: ['dist'],
   // To be a test file, you need to be named foo.test.ts AND be in
@@ -10,3 +11,5 @@ module.exports = {
   // live next to your tests.
   testMatch: ['**/__tests__/**/(*.)+(spec|test).[jt]s?(x)'],
 };
+
+export default config;
