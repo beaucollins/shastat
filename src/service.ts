@@ -2,7 +2,7 @@ import { Endpoint, exactPath, jsonResponse, route, routes, serve } from '@fractu
 import { isSuccess } from '@fracture/parse';
 import { Gateway } from './data/gateway';
 
-import { resourceFromParam } from './data/params';
+import { resourceFromParam, whenFound } from './data/params';
 import { CreateFooBody, parseBody, parseJson } from './parseBody';
 import { alphaNumeric, get, mapRoute, numeric, param, paramValue, path, post, routePath } from './path';
 import { notImplemented } from './response';
@@ -39,10 +39,10 @@ export const createService = (gateway: Gateway): Endpoint =>
             resourceFromParam(gateway.getFoo, ([, fooId]) => paramValue(fooId)),
           ),
         ),
-        (result) =>
-          result[0] === 'found'
-            ? jsonResponse(200, {}, { foo: result[1] })
-            : jsonResponse(404, {}, { status: 'not_found', id: result[1], error: result[2].message }),
+        whenFound(
+          (foo) => jsonResponse(200, {}, { foo }),
+          (id, error) => jsonResponse(404, {}, { status: 'not_found', id, error: error.message }),
+        ),
       ),
 
       /**

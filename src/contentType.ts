@@ -1,4 +1,4 @@
-import { Parser, isString, mapParser, failure, success, oneOf } from '@fracture/parse';
+import { Parser, isString, mapParser, Failure, failure, success, oneOf, mapResult } from '@fracture/parse';
 import { complete, isCaseInsensitiveToken, isChar, many, oneOrMore, sequence, Tokenizer } from './tokenizer';
 
 const types = ['application', 'audio', 'image', 'multipart', 'text', 'video', 'extension-token'] as const;
@@ -77,7 +77,17 @@ const isContentType: Parser<ContentType, string> = mapParser(
   },
 );
 
+function mapParserFailure<T, I, A, B>(
+  parser: Parser<T, I>,
+  success: (value: T) => A,
+  failure: (value: Failure<I>) => B,
+): (input: I) => A | B {
+  return (value) => mapResult(parser(value), success, failure);
+}
+
 /**
  * https://www.mhonarc.org/~ehood/MIME/1521/04_Content-Type.html
  */
-export const parseContentType: ContentTypeParser = mapParser<string, ContentType, unknown>(isString, isContentType);
+export const parseContentType: ContentTypeParser = mapParserFailure(isString, isContentType, ({ value }) =>
+  failure(value, 'Unsupported Content-Type'),
+);
