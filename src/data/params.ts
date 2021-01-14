@@ -1,5 +1,5 @@
 import { Success, success } from '@fracture/parse';
-import { Response, Request, jsonResponse } from '@fracture/serve';
+import { Response, Request } from '@fracture/serve';
 
 type Found<T> = [status: 'found', resource: T];
 type NotFound<T> = [status: 'not_found', param: T, reason: Error];
@@ -24,7 +24,7 @@ export const whenFound = <T, P>(
   onFound: (resource: T, request: Request) => Response | Promise<Response>,
   notFound: (param: P, reason: Error, request: Request) => Response | Promise<Response>,
 ) => {
-  return (resource: Resource<T, P>, request: Request) => {
+  return (resource: Resource<T, P>, request: Request): Response | Promise<Response> => {
     if (isFound(resource)) {
       return onFound(resource[1], request);
     }
