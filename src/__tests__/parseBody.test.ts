@@ -3,7 +3,7 @@ import { failure } from '@fracture/parse';
 
 import { JSONParser, parseBody } from '../parseBody';
 import { requireFailure } from './assertResult';
-import { readableBuffer } from './readableBuffer';
+import { Readable } from 'stream';
 
 describe('JSONParser', () => {
   it.each(['{', 'some json'])('fails with invalid JSON', (json) => {
@@ -18,7 +18,7 @@ describe('parseBody', () => {
   const parse = (request: Request) => parseBody(request, (content) => failure(content, 'Not implemented'));
 
   it('fails without Content-Type header', async () => {
-    const request = { method: 'FOO', url: '/bar', headers: {}, request: readableBuffer(Buffer.from('{}')) } as Request;
+    const request = { method: 'FOO', url: '/bar', headers: {}, request: Readable.from(Buffer.from('{}')) } as Request;
     expect(requireFailure(await parse(request)).reason).toMatch('Unsupported Content-Type');
   });
 
@@ -27,7 +27,7 @@ describe('parseBody', () => {
       method: 'FOO',
       url: '/bar',
       headers: { 'content-type': 'lol' },
-      request: readableBuffer(Buffer.from('{}')),
+      request: Readable.from(Buffer.from('{}')),
     } as Request;
     expect(requireFailure(await parse(request)).reason).toMatch(/^Does not match/);
   });
@@ -37,7 +37,7 @@ describe('parseBody', () => {
       method: 'FOO',
       url: '/bar',
       headers: { 'content-type': 'application/json', 'content-encoding': 'whatever' },
-      request: readableBuffer(Buffer.from('{}')),
+      request: Readable.from(Buffer.from('{}')),
     } as Request;
     expect(requireFailure(await parse(request)).reason).toMatch('Unsupported encoding: whatever');
   });
@@ -47,7 +47,7 @@ describe('parseBody', () => {
       method: 'FOO',
       url: '/bar',
       headers: { 'content-type': 'application/json' },
-      request: readableBuffer(Buffer.from('{}')),
+      request: Readable.from(Buffer.from('{}')),
     } as Request;
     expect(requireFailure(await parse(request)).reason).toEqual('Not implemented');
   });

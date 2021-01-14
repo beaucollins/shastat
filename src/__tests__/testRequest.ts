@@ -1,43 +1,29 @@
 import { Response } from '@fracture/serve';
 
-import { IncomingMessage, request, Server } from 'http';
-import { AddressInfo } from 'net';
+import { IncomingMessage, ServerResponse } from 'http';
 import { Gateway } from '../data/gateway';
-import { listen } from '../server';
+import { createService } from '../service';
 import { overrideGateway } from './testGateway';
+import { Readable, Writable } from 'stream';
 
-function createRequest(server: Server, method: 'GET' | ['POST', string, string, Buffer] | 'HEAD', url: string) {
-  const { port } = server.address() as AddressInfo;
+function createIncomingMessage(method: 'GET' | ['POST', string, string, Buffer] | 'HEAD', url: string) {
   switch (method) {
     case 'GET':
     case 'HEAD': {
-      const req = request({ method, path: url, port });
-      req.end();
-      return req;
+      const stream = Readable.from(Buffer.from('')) as IncomingMessage;
+      stream.method = method;
+      stream.url = url;
+      return stream;
     }
     default: {
       const [verb, contentType, contentEncoding, body] = method;
-      const req = request({
-        method: verb,
-        path: url,
-        port,
-        headers: {
-          'content-type': contentType,
-          'content-encoding': contentEncoding,
-          'content-length': body.length,
-        },
-      });
-      req.write(body);
-      req.end();
-      return req;
+      const stream = Readable.from(body) as IncomingMessage;
+      stream.method = verb;
+      stream.url = url;
+      stream.headers = { 'content-type': contentType, 'content-encoding': contentEncoding };
+      return stream;
     }
   }
-}
-
-function send(server: Server, method: 'GET' | ['POST', string, string, Buffer] | 'HEAD', url: string) {
-  return new Promise<IncomingMessage>((resolve, reject) =>
-    createRequest(server, method, url).on('response', resolve).on('error', reject),
-  );
 }
 
 export async function testRequest(
@@ -45,14 +31,22 @@ export async function testRequest(
   url: string,
   gateway?: Partial<Gateway>,
 ): Promise<Response> {
-  const server = await new Promise<Server>((resolve) => {
-    const http = listen(overrideGateway(gateway ?? {}), 0);
-    http.on('listening', () => resolve(http));
-  });
+  const incomingMessage = createIncomingMessage(method, url);
 
-  const request = await send(server, method, url);
+  const service = createService(overrideGateway(gateway ?? {}));
+  let buffer = Buffer.from('');
+  const response = (new Writable({
+    write(chunk, encoding, callback) {
+      buffer = Buffer.concat([buffer, Buffer.from(chunk, encoding)]);
+      callback();
+    },
+  }) as unknown) as ServerResponse;
 
-  await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  response.writeHead = () => {
+    return response;
+  };
 
-  return [request.statusCode!, request.headers, request];
+  const result = await service(incomingMessage, response);
+
+  return result;
 }

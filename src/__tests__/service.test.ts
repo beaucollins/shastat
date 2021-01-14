@@ -7,7 +7,7 @@ describe('service', () => {
 
     expect(status).toBe(404);
     expect(headers).toMatchObject({
-      'content-length': expect.any(String),
+      'content-length': expect.any(Number),
       'content-type': 'application/json',
     });
     expect(await readJSON(body)).toEqual({
@@ -21,7 +21,7 @@ describe('service', () => {
     expect(status).toBe(200);
 
     expect(headers).toMatchObject({
-      'content-length': expect.any(String),
+      'content-length': expect.any(Number),
       'content-type': 'application/json',
     });
 
