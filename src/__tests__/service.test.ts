@@ -1,89 +1,71 @@
+import { IncomingHttpHeaders } from 'http';
+import { Gateway } from '../data/gateway';
 import { readJSON } from './readBody';
 import { testRequest } from './testRequest';
 
 describe('service', () => {
-  it('404s', async () => {
-    const [status, headers, body] = await testRequest('GET', '/not-a-valid-url');
+  type TestCase = Readonly<
+    | [
+        method: 'GET' | 'POST',
+        path: string,
+        responseCode: number,
+        requestBody: Buffer | null,
+        response: [any] | [any, IncomingHttpHeaders],
+        gatewayOverride: Partial<Gateway>,
+      ]
+    | [
+        method: 'GET' | 'POST',
+        path: string,
+        responseCode: number,
+        requestBody: Buffer | null,
+        response: [any] | [any, IncomingHttpHeaders],
+      ]
+  >;
 
-    expect(status).toBe(404);
-    expect(headers).toMatchObject({
-      'content-length': expect.any(Number),
-      'content-type': 'application/json',
-    });
-    expect(await readJSON(body)).toEqual({
-      status: 'Not Found folks',
-    });
-  });
+  const jsonBuffer = (content: unknown) => Buffer.from(JSON.stringify(content));
 
-  it('GET /hello', async () => {
-    const [status, headers, body] = await testRequest('GET', '/hello');
-
-    expect(status).toBe(200);
-
-    expect(headers).toMatchObject({
-      'content-length': expect.any(Number),
-      'content-type': 'application/json',
-    });
-
-    expect(await readJSON(body)).toMatchObject({
-      hello: 'world',
-    });
-  });
-
-  it('GET /add/2/to/2', async () => {
-    const [status, , body] = await testRequest('GET', '/add/2/to/2');
-
-    expect(status).toBe(200);
-    expect(await readJSON(body)).toEqual({ sum: 4 });
-  });
-
-  it('GET /greet/alice/from/bob', async () => {
-    const [status, , body] = await testRequest('GET', '/greet/alice/from/bob');
-
-    expect(status).toBe(200);
-    expect(await readJSON(body)).toEqual({
-      message: 'some pattern',
-      name: 'alice',
-      from: 'bob',
-    });
-  });
-
-  it('POST /greet/alice/from/bob', async () => {
-    const [status, , body] = await testRequest(
-      ['POST', 'application/json', 'identity', Buffer.from('')],
-      '/greet/bob/from/alice',
-    );
-    expect(status).toBe(201);
-    expect(await readJSON(body)).toEqual({
-      whatsup: 'doc',
-      from: 'alice',
-      name: 'bob',
-    });
-  });
-
-  it('POST /foo 501', async () => {
-    const [status] = await testRequest(
-      ['POST', 'application/json', 'identity', Buffer.from(JSON.stringify({ sha: 'hello' }))],
+  const requestCases: Readonly<TestCase[]> = [
+    ['GET', '/hello', 200, null, [{ hello: 'world' }]],
+    ['GET', '/not-a-valid-url', 404, null, [{ status: 'Not Found folks' }]],
+    ['GET', '/add/2/to/2', 200, null, [{ sum: 4 }]],
+    ['GET', '/greet/alice/from/bob', 200, null, [{ from: 'bob', name: 'alice', message: 'some pattern' }]],
+    ['GET', '/foo/sha/abc', 404, null, [{ error: expect.any(String), id: 'abc', status: 'not_found' }]],
+    ['POST', '/foo', 424, Buffer.from('{}'), [{ error: /^Failed at 'sha'/ }]],
+    ['POST', '/greet/bob/from/alice', 201, Buffer.from('{}'), [{ from: 'alice', name: 'bob', whatsup: 'doc' }]],
+    ['POST', '/foo', 424, jsonBuffer({ sha: 'hello' }), [{ error: expect.any(String) }]],
+    [
+      'POST',
       '/foo',
-    );
-    expect(status).toBe(424);
-  });
+      201,
+      jsonBuffer({ sha: String(Math.random() * 1000) }),
+      [{ foo: expect.objectContaining({ id: 'lol', sha: expect.any(String) }) }],
+      { createFoo: ({ sha }) => Promise.resolve({ id: 'lol', sha }) },
+    ],
+    ['GET', '/foo/bar', 404, null, [{ error: expect.any(String) }]],
+    [
+      'GET',
+      '/foo/bar',
+      200,
+      null,
+      [{ foo: expect.objectContaining({ id: 'bar', sha: 'sha' }) }],
+      { getFoo: (id) => Promise.resolve({ id, sha: 'sha' }) },
+    ],
+  ];
 
-  describe('GET /foo/bar', () => {
-    it('responds with 404 when gateway errors', async () => {
-      const [status, , body] = await testRequest('GET', '/foo/bar');
-      expect(status).toBe(404);
-      expect(await readJSON(body)).toMatchObject({
-        status: expect.any(String),
-      });
-    });
+  it.each(requestCases)(
+    '%s %s %d',
+    async (method, path, responseCode, requestBody, [responseMatch, responseHeaders], gateway = undefined) => {
+      const [statusCode, headers, body] = await testRequest(
+        method === 'POST' ? ['POST', 'application/json', 'identity', requestBody ?? Buffer.from('')] : method,
+        path,
+        gateway,
+      );
 
-    it('responds with 200 when foo is found', async () => {
-      const foo = { id: 'id', sha: 'sha' };
-      const [status, , body] = await testRequest('GET', '/foo/bar', { getFoo: () => Promise.resolve(foo) });
-
-      expect(status).toBe(200);
-      expect(await readJSON(body)).toEqual({ foo });
-    });
-  });
+      expect(statusCode).toEqual(responseCode);
+      if (responseHeaders) {
+        expect(headers).toMatchObject(responseHeaders);
+      }
+      expect(await readJSON(body)).toMatchObject(responseMatch);
+    },
+  );
 });

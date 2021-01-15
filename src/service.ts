@@ -5,7 +5,6 @@ import { Gateway } from './data/gateway';
 import { resourceFromParam, whenFound } from './data/params';
 import { CreateFooBody, parseBody, parseJson } from './parseBody';
 import { alphaNumeric, get, mapRoute, numeric, param, paramValue, path, post, routePath } from './path';
-import { notImplemented } from './response';
 import { matchRoute } from './matchRoute';
 
 export const createService = (gateway: Gateway): Endpoint =>
@@ -56,7 +55,7 @@ export const createService = (gateway: Gateway): Endpoint =>
             (error) => jsonResponse(424, {}, { error: error.message }),
           );
         }
-        return notImplemented();
+        return jsonResponse(424, {}, { error: result.reason });
       }),
 
       /**
