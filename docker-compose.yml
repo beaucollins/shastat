@@ -6,12 +6,16 @@ services:
       context: .
       target: dev
     ports:
-      - '6000:6000'
+      - '6005:6000'
     volumes:
       - ./src:/var/app/src
       - ./package.json:/var/app/package.json
     environment:
-      POSTGRES_CONNECTION_STRING: postgres://postgres:demo@db/
+      - POSTGRES_CONNECTION_STRING
+      - GITHUB_APP_ID
+      - GITHUB_APP_CLIENT_ID
+      - GITHUB_APP_CLIENT_SECRET
+      - GITHUB_APP_CERT
 
   db:
     image: postgres:12
