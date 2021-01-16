@@ -1,16 +1,16 @@
 import { IncomingHttpHeaders } from 'http';
 import { Gateway } from '../data/gateway';
-import { readJSON } from './readBody';
+import { readBody, readJSON } from './readBody';
 import { testRequest } from './testRequest';
 
 describe('service', () => {
-  type TestCase = Readonly<
+  type TestCase<R> = Readonly<
     | [
         method: 'GET' | 'POST',
         path: string,
         responseCode: number,
         requestBody: Buffer | null,
-        response: [any] | [any, IncomingHttpHeaders],
+        response: [R] | [R, IncomingHttpHeaders],
         gatewayOverride: Partial<Gateway>,
       ]
     | [
@@ -18,13 +18,13 @@ describe('service', () => {
         path: string,
         responseCode: number,
         requestBody: Buffer | null,
-        response: [any] | [any, IncomingHttpHeaders],
+        response: [R] | [R, IncomingHttpHeaders],
       ]
   >;
 
   const jsonBuffer = (content: unknown) => Buffer.from(JSON.stringify(content));
 
-  const requestCases: Readonly<TestCase[]> = [
+  const jsonCases: Readonly<TestCase<any>[]> = [
     ['GET', '/hello', 200, null, [{ hello: 'world' }]],
     ['GET', '/not-a-valid-url', 404, null, [{ status: 'Not Found folks' }]],
     ['GET', '/add/2/to/2', 200, null, [{ sum: 4 }]],
@@ -50,9 +50,13 @@ describe('service', () => {
       [{ foo: expect.objectContaining({ id: 'bar', sha: 'sha' }) }],
       { getFoo: (id) => Promise.resolve({ id, sha: 'sha' }) },
     ],
+    ['GET', '/admin/', 400, null, [{ status: 'wtf' }]],
+    ['GET', '/admin', 404, null, [{ status: 'Not Found folks' }]],
+    ['GET', '/admin/rest?hello=world', 400, null, [{ status: 'wtf' }]],
+    ['GET', '/admin/users', 200, null, [{ lol: 'son' }]],
   ];
 
-  it.each(requestCases)(
+  it.each(jsonCases)(
     '%s %s %d',
     async (method, path, responseCode, requestBody, [responseMatch, responseHeaders], gateway = undefined) => {
       const [statusCode, headers, body] = await testRequest(
@@ -66,6 +70,27 @@ describe('service', () => {
         expect(headers).toMatchObject(responseHeaders);
       }
       expect(await readJSON(body)).toMatchObject(responseMatch);
+    },
+  );
+
+  const htmlCases: TestCase<string | RegExp>[] = [
+    ['GET', '/admin/apps', 200, null, [/🌍/, { 'content-type': 'text/html;charset=utf-8' }]],
+  ];
+
+  it.each(htmlCases)(
+    `%s %s %d`,
+    async (method, path, responseCode, requestBody, [responseMatch, responseHeaders], gateway = undefined) => {
+      const [statusCode, headers, body] = await testRequest(
+        method === 'POST' ? ['POST', 'application/json', 'identity', requestBody ?? Buffer.from('')] : method,
+        path,
+        gateway,
+      );
+
+      expect(statusCode).toEqual(responseCode);
+      if (responseHeaders) {
+        expect(headers).toMatchObject(responseHeaders);
+      }
+      expect(await readBody(body)).toMatch(responseMatch);
     },
   );
 });

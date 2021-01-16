@@ -210,3 +210,5 @@ export const mapRoute = <A, B>(route: Route<A>, map: (route: A) => ReturnType<Ro
 export function paramValue<T, N extends string>(param: Param<N, T>): T {
   return param[2];
 }
+
+export const matchRest: Parser<[string, string], string> = (path) => success([path, '']);

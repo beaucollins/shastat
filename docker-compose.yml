@@ -6,7 +6,7 @@ services:
       context: .
       target: dev
     ports:
-      - '6000:6000'
+      - '6005:6000'
     volumes:
       - ./src:/var/app/src
       - ./package.json:/var/app/package.json

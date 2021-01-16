@@ -1,11 +1,16 @@
-import { Endpoint, exactPath, jsonResponse, route, routes, serve } from '@fracture/serve';
-import { isSuccess } from '@fracture/parse';
+import { Endpoint, Response, exactPath, jsonResponse, route, routes, serve } from '@fracture/serve';
+import { isSuccess, mapResult } from '@fracture/parse';
 import { Gateway } from './data/gateway';
+import { Readable } from 'stream';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
+import { OutgoingHttpHeaders } from 'http';
 
 import { resourceFromParam, whenFound } from './data/params';
 import { CreateFooBody, parseBody, parseJson } from './parseBody';
-import { alphaNumeric, get, mapRoute, numeric, param, paramValue, path, post, routePath } from './path';
+import { alphaNumeric, get, mapRoute, matchRest, numeric, param, paramValue, path, post, routePath } from './path';
 import { matchRoute } from './matchRoute';
+import { Admin } from './views';
 
 export const createService = (gateway: Gateway): Endpoint =>
   serve(
@@ -70,6 +75,23 @@ export const createService = (gateway: Gateway): Endpoint =>
        * Request /hello
        */
       route(get(exactPath('/hello')), () => jsonResponse(200, {}, { hello: 'world' })),
+
+      /**
+       * /admin/*
+       */
+      route(path('/admin/', param('rest', matchRest)), async ([_admin, rest], request) =>
+        mapResult(
+          await routes(
+            route(path('/apps'), () => htmlDocument(200, {}, createElement(Admin))),
+            route(path('/users'), () => jsonResponse(200, {}, { lol: 'son' })),
+          )({
+            ...request,
+            url: `/${paramValue(rest)}`,
+          }),
+          (response) => response,
+          (failure) => jsonResponse(400, {}, { status: 'wtf', reason: failure.reason }),
+        ),
+      ),
     ),
 
     /**
@@ -77,3 +99,12 @@ export const createService = (gateway: Gateway): Endpoint =>
      */
     () => jsonResponse(404, {}, { status: 'Not Found folks' }),
   );
+
+function htmlDocument(status: number, headers: OutgoingHttpHeaders, view: React.ReactElement): Response {
+  const html = Buffer.from(renderToStaticMarkup(view), 'utf-8');
+  return [
+    status,
+    { ...headers, 'content-type': 'text/html;charset=utf-8', 'content-length': html.length },
+    Readable.from(html),
+  ];
+}
