@@ -1,4 +1,5 @@
 import { IncomingHttpHeaders } from 'http';
+import { GitHubInstallation } from '../data/github';
 import { readBody, readJSON } from './readBody';
 import { TestGateways, testRequest } from './testRequest';
 
@@ -79,7 +80,31 @@ describe('service', () => {
       200,
       null,
       [/🌍/, { 'content-type': 'text/html;charset=utf-8' }],
-      { gitHub: { getInstallations: () => Promise.resolve([]) } },
+      {
+        gitHub: {
+          getInstallations: () =>
+            Promise.resolve<GitHubInstallation[]>([
+              {
+                id: 5432,
+                account: {},
+                access_tokens_url: '',
+                app_id: 1,
+                app_slug: '',
+                contact_email: '',
+                created_at: '',
+                events: [],
+                html_url: '',
+                permissions: {},
+                repositories_url: '',
+                repository_selection: 'all',
+                single_file_name: null,
+                target_id: 1,
+                target_type: 'foo',
+                updated_at: '',
+              },
+            ]),
+        },
+      },
     ],
     ['GET', '/admin/apps', 500, null, [/Error: not implemented/]],
   ];
