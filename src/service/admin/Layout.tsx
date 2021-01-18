@@ -17,12 +17,12 @@ const Header = () => (
   </HeaderDiv>
 );
 
-type LayoutProps = {
+type Props = {
   pageTitle: string;
   children: React.ReactNode;
 };
 
-export const Layout = ({ children, pageTitle }: LayoutProps) => {
+export const Layout = ({ children, pageTitle }: Props) => {
   return (
     <html>
       <head>

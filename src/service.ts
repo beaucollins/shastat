@@ -6,14 +6,32 @@ import { CreateFooBody, parseBody, parseJson } from './parseBody';
 import { alphaNumeric, get, mapRoute, numeric, param, paramValue, path, post, routePath } from './path';
 import { matchRoute } from './matchRoute';
 import { Gateways } from './data/gateways';
-import { admin } from './service/admin';
 import { errorHandler } from './errorHandler';
+import { admin } from './service/admin';
+import { auth } from './service/auth';
+import { home } from './service/home';
+import { respondWithRedirect } from './redirectTo';
 
 export const createService = (gateways: Gateways): Endpoint =>
   serve(
     errorHandler(
       routes(
+        /**
+         * GET /
+         */
+        home,
+        /**
+         * GET /login
+         */
+        auth(gateways),
+        /**
+         * /admin/*
+         */
         admin(gateways, '/admin/'),
+        route(
+          get(path('/admin')),
+          respondWithRedirect(() => '/admin/'),
+        ),
         /**
          * Request /greet/alice/from/bob
          */

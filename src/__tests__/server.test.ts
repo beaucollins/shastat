@@ -1,11 +1,14 @@
 import { AddressInfo } from 'net';
 import { IncomingHttpHeaders, request, Server } from 'http';
 import { listen } from '../server';
-import { defaultTestGateway, defaultTestGitHubGateway } from './testGateway';
+import { defaultTestAuthGateway, defaultTestGateway, defaultTestGitHubGateway } from './testGateway';
 
 describe('server', () => {
   const server = new Promise<Server>((resolve) => {
-    const http = listen({ db: defaultTestGateway, gitHub: defaultTestGitHubGateway }, 0).on('listening', () => {
+    const http = listen(
+      { db: defaultTestGateway, gitHub: defaultTestGitHubGateway, auth: defaultTestAuthGateway },
+      0,
+    ).on('listening', () => {
       resolve(http);
     });
   });

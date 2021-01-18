@@ -16,6 +16,7 @@ services:
       - GITHUB_APP_CLIENT_ID
       - GITHUB_APP_CLIENT_SECRET
       - GITHUB_APP_CERT
+      - SHASTAT_IDENTITY_CERT
 
   db:
     image: postgres:12
