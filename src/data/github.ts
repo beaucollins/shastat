@@ -1,10 +1,11 @@
 import { Octokit } from '@octokit/rest';
 import { Parser, objectOf, isString, mapResult } from '@fracture/parse';
 import { components } from '@octokit/openapi-types';
-import { sign } from 'jsonwebtoken';
 import { request } from 'https';
 import { encode, parse } from 'querystring';
 import { readBuffer } from '../parseBody';
+import SignJWT from 'jose/jwt/sign';
+import { createPrivateKey } from 'crypto';
 
 export type GitHubInstallation = components['schemas']['installation'];
 
@@ -107,22 +108,12 @@ export function createGitHubGateway(): GitHubGateway {
 }
 
 function createGitHubJWT(): Promise<{ authorization: string }> {
-  return new Promise((resolve, reject) => {
-    sign(
-      { foo: 'bar' },
-      process.env.GITHUB_APP_CERT!,
-      { algorithm: 'RS256', expiresIn: '5 minutes', issuer: process.env.GITHUB_APP_ID! },
-      (error, encoded) => {
-        if (error != null) {
-          reject(error);
-          return;
-        }
-        if (encoded == null) {
-          reject(new Error('Failed to sign'));
-          return;
-        }
-        resolve({ authorization: `bearer ${encoded}` });
-      },
-    );
-  });
+  const privateKey = createPrivateKey({ key: process.env.GITHUB_APP_CERT!, format: 'pem' });
+  return new SignJWT({ foo: 'bar' })
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuer(process.env.GITHUB_APP_ID!)
+    .setIssuedAt()
+    .setExpirationTime('5 minutes')
+    .sign(privateKey)
+    .then((encoded) => ({ authorization: `bearer ${encoded}` }));
 }

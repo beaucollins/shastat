@@ -1,66 +1,80 @@
+import { createPrivateKey, KeyObject } from 'crypto';
+import jwtDecrypt, { JWTPayload } from 'jose/jwt/decrypt';
+import EncryptJWT from 'jose/jwt/encrypt';
 import { Gateways } from './data/gateways';
-import { GitHubAccessToken } from './data/github';
-import { sign, verify } from 'jsonwebtoken';
+import { GitHubAccessToken, GitHubOrganization, GitHubUser } from './data/github';
+
+export type KeyProvider = () => Promise<KeyObject>;
 
 export type UserIdentity = {
   name: string;
 };
 
-export type UserToken = Record<string, unknown>;
+export type UserToken = JWTPayload;
 
 export type AuthGateway = {
   verifyToken(token: string): Promise<UserToken>;
+  createToken(accessToken: GitHubAccessToken, user: GitHubUser, org: GitHubOrganization): Promise<string>;
 };
 
 // JWT encoding and decoding
 
-const ALLOWED_ORGS = ['cocollc'];
+const ALLOWED_ORGANIZATIONS = ['cocollc'];
 
-const KEY = process.env.SHASTAT_IDENTITY_CERT!;
+const ISSUER = `urn:pub.collins.shastat`;
 
 export async function sessionTokenForAccessToken(gateways: Gateways, auth: GitHubAccessToken): Promise<string> {
   auth.access_token;
   const user = await gateways.gitHub.getAuthenticatedUser(auth.access_token);
-  const orgs = await gateways.gitHub.getAuthenticatedUserOrganizations(auth.access_token, user.login);
-  const allowedOrg = orgs.find((org) => ALLOWED_ORGS.indexOf(org.login) > -1);
+  const organizations = await gateways.gitHub.getAuthenticatedUserOrganizations(auth.access_token, user.login);
+  const allowedOrg = organizations.find((organization) => ALLOWED_ORGANIZATIONS.indexOf(organization.login) > -1);
   if (allowedOrg == null) {
     return Promise.reject(new Error('Not member of approved organization'));
   }
-  return createToken();
+  return gateways.auth.createToken(auth, user, allowedOrg);
 }
 
-export function createToken(): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    sign({}, KEY, { issuer: 'pub.collins.shastat' }, (error, encoded) => {
-      if (error != null) {
-        reject(error);
-        return;
-      }
-      if (encoded == null) {
-        reject(new Error('sign failed'));
-        return;
-      }
-      resolve(encoded);
-    });
+function createToken(
+  keyProvider: KeyProvider,
+): (accessToken: GitHubAccessToken, user: GitHubUser, org: GitHubOrganization) => Promise<string> {
+  return (accessToken, _user, organization) => {
+    return keyProvider().then((key) =>
+      new EncryptJWT({
+        'urn:com.github:organization_id': organization.id,
+        'urn:com.github:organization_login': organization.login,
+        'urn:com.github:refresh_token': accessToken.refresh_token,
+      })
+        .setProtectedHeader({ alg: 'RSA-OAEP', enc: 'A256GCM' })
+        .setIssuedAt()
+        .setIssuer(ISSUER)
+        .setExpirationTime('60 min')
+        .encrypt(key),
+    );
+  };
+}
+
+function verifyToken(keyProvider: KeyProvider): (token: string) => Promise<UserToken> {
+  return (token) =>
+    keyProvider().then((key) => jwtDecrypt(token, key, { issuer: ISSUER }).then((token) => token.payload));
+}
+
+function createKeyProvider(): KeyProvider {
+  const key = new Promise<KeyObject>((resolve, reject) => {
+    try {
+      const key = process.env.SHASTAT_IDENTITY_CERT!;
+      resolve(createPrivateKey({ key, format: 'pem' }));
+    } catch (error) {
+      reject(error);
+    }
   });
-}
 
-export function verifyToken(token: string): Promise<UserToken> {
-  return new Promise((resolve, reject) =>
-    verify(token, KEY, (error, decoded) => {
-      if (error != null) {
-        reject(error);
-        return;
-      }
-      if (decoded == null) {
-        reject(new Error('Failed to decode.'));
-        return;
-      }
-      resolve(decoded as UserToken);
-    }),
-  );
+  return () => key;
 }
 
 export function createAuthGateway(): AuthGateway {
-  return { verifyToken };
+  const keyProvider = createKeyProvider();
+  return {
+    verifyToken: verifyToken(keyProvider),
+    createToken: createToken(keyProvider),
+  };
 }
