@@ -6,14 +6,6 @@ import { htmlDocument } from './htmlDocument';
 
 type LayoutProps = { children?: React.ReactNode };
 
-export function renderView<P extends Record<string, unknown>>(
-  code: number,
-  headers: OutgoingHttpHeaders,
-  element: React.ReactElement<P>,
-): Promise<Response> {
-  return htmlDocument(code, headers, element);
-}
-
 export function renderViewInLayout<P extends Record<string, unknown>, L extends LayoutProps>(
   status: number,
   headers: OutgoingHttpHeaders,
@@ -25,7 +17,7 @@ export function renderViewInLayout<P extends Record<string, unknown>, L extends 
     ...layoutProps,
     children: element,
   } as L;
-  return renderView(status, headers, <Layout {...props} />);
+  return htmlDocument(status, headers, <Layout {...props} />);
 }
 
 export function inLayout<L extends LayoutProps>(Layout: React.ComponentType<L>) {

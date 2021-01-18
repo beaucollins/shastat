@@ -16,6 +16,7 @@ export const createService = (gateways: Gateways): Endpoint =>
   serve(
     errorHandler(
       routes(
+        admin(gateways, '/admin/'),
         /**
          * GET /
          */
