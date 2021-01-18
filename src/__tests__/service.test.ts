@@ -1,5 +1,5 @@
 import { IncomingHttpHeaders } from 'http';
-import { GitHubInstallation } from '../data/github';
+import { GitHubApp, GitHubInstallation } from '../data/github';
 import { readBody, readJSON } from './readBody';
 import { TestGateways, testRequest } from './testRequest';
 
@@ -31,7 +31,7 @@ describe('service', () => {
     ['GET', '/greet/alice/from/bob', 200, null, [{ from: 'bob', name: 'alice', message: 'some pattern' }]],
     ['GET', '/foo/sha/abc', 404, null, [{ error: expect.any(String), id: 'abc', status: 'not_found' }]],
     ['POST', '/foo', 424, Buffer.from('{}'), [{ error: /^Failed at 'sha'/ }]],
-    ['POST', '/greet/bob/from/alice', 201, Buffer.from('{}'), [{ from: 'alice', name: 'bob', whatsup: 'doc' }]],
+    ['POST', '/greet/bob/from/alice', 201, Buffer.from('{}'), [{ from: 'alice', name: 'bob', hello: 'there' }]],
     ['POST', '/foo', 424, jsonBuffer({ sha: 'hello' }), [{ error: expect.any(String) }]],
     [
       'POST',
@@ -50,9 +50,9 @@ describe('service', () => {
       [{ foo: expect.objectContaining({ id: 'bar', sha: 'sha' }) }],
       { db: { getFoo: (id) => Promise.resolve({ id, sha: 'sha' }) } },
     ],
-    ['GET', '/admin/', 400, null, [{ status: 'wtf' }]],
+    ['GET', '/admin/', 400, null, [{ status: '/admin/' }]],
     ['GET', '/admin', 404, null, [{ status: 'Not Found folks' }]],
-    ['GET', '/admin/rest?hello=world', 400, null, [{ status: 'wtf' }]],
+    ['GET', '/admin/rest?hello=world', 400, null, [{ status: '/admin/' }]],
     ['GET', '/admin/users', 200, null, [{ lol: 'son' }]],
   ];
 
@@ -107,6 +107,31 @@ describe('service', () => {
       },
     ],
     ['GET', '/admin/apps', 500, null, [/Error: not implemented/]],
+    [
+      'GET',
+      '/admin/info',
+      200,
+      null,
+      [/<h1>Info<\/h1>/],
+      {
+        gitHub: {
+          getApp: () =>
+            Promise.resolve<GitHubApp>({
+              id: 1,
+              node_id: '1',
+              name: 'name',
+              owner: null,
+              description: 'description',
+              external_url: 'mock://',
+              html_url: 'mock://',
+              created_at: '',
+              updated_at: '',
+              permissions: {},
+              events: [],
+            }),
+        },
+      },
+    ],
   ];
 
   it.each(htmlCases)(

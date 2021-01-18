@@ -4,26 +4,37 @@ import { sign } from 'jsonwebtoken';
 
 export type GitHubInstallation = components['schemas']['installation'];
 
+export type GitHubApp = components['schemas']['integration'];
+
 export interface GitHubGateway {
   getInstallations(): Promise<GitHubInstallation[]>;
+  getApp(): Promise<GitHubApp>;
+}
+
+function api<T, Input extends unknown[], Return extends { data: T }>(
+  method: (header: { authorization: string }, ...input: Input) => Promise<Return>,
+): (...input: Input) => Promise<T> {
+  return (...args) =>
+    createGitHubJWT()
+      .then((header) => method(header, ...args))
+      .then((r) => r.data);
 }
 
 export function createGitHubGateway(): GitHubGateway {
-  const octokit = new Octokit();
+  const octokit = new Octokit({
+    userAgent: `cocollc-devops/${process.env.VERSION ?? `dev`}`,
+  });
   return {
-    getInstallations: async () => {
-      const result = await octokit.apps.listInstallations({
-        headers: { authorization: `bearer ${await createGitHubJWT()}` },
-      });
-      if (result.status !== 200) {
-        throw new Error('Authentication failed');
-      }
-      return result.data;
-    },
+    getInstallations: api((auth) =>
+      octokit.apps.listInstallations({
+        headers: { ...auth },
+      }),
+    ),
+    getApp: api((auth) => octokit.apps.getAuthenticated({ headers: { ...auth } })),
   };
 }
 
-function createGitHubJWT(): Promise<string> {
+function createGitHubJWT(): Promise<{ authorization: string }> {
   return new Promise((resolve, reject) => {
     sign(
       { foo: 'bar' },
@@ -38,7 +49,7 @@ function createGitHubJWT(): Promise<string> {
           reject(new Error('Failed to sign'));
           return;
         }
-        resolve(encoded);
+        resolve({ authorization: `bearer ${encoded}` });
       },
     );
   });

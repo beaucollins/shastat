@@ -1,28 +1,19 @@
-import { Endpoint, Response, exactPath, jsonResponse, route, routes, serve, Handler } from '@fracture/serve';
-import { isSuccess, mapResult, success } from '@fracture/parse';
-import { Gateway } from './data/gateway';
-import { Readable } from 'stream';
-import { renderToNodeStream } from 'react-dom/server';
-import { createElement } from 'react';
-import { OutgoingHttpHeaders } from 'http';
-import { ServerStyleSheet } from 'styled-components';
+import { Endpoint, exactPath, jsonResponse, route, routes, serve } from '@fracture/serve';
+import { isSuccess } from '@fracture/parse';
 
 import { resourceFromParam, whenFound } from './data/params';
 import { CreateFooBody, parseBody, parseJson } from './parseBody';
-import { alphaNumeric, get, mapRoute, matchRest, numeric, param, paramValue, path, post, routePath } from './path';
+import { alphaNumeric, get, mapRoute, numeric, param, paramValue, path, post, routePath } from './path';
 import { matchRoute } from './matchRoute';
-import { Admin, ServerException } from './views';
-import { GitHubGateway } from './data/github';
+import { Gateways } from './data/gateways';
+import { admin } from './service/admin';
+import { errorHandler } from './errorHandler';
 
-export interface Gateways {
-  db: Gateway;
-  gitHub: GitHubGateway;
-}
-
-export const createService = ({ db, gitHub }: Gateways): Endpoint =>
+export const createService = (gateways: Gateways): Endpoint =>
   serve(
     errorHandler(
       routes(
+        admin(gateways, '/admin/'),
         /**
          * Request /greet/alice/from/bob
          */
@@ -30,7 +21,7 @@ export const createService = ({ db, gitHub }: Gateways): Endpoint =>
           GET: ([, name, , from]) =>
             jsonResponse(200, {}, { message: 'some pattern', name: paramValue(name), from: paramValue(from) }),
           POST: ([, name, , from]) =>
-            jsonResponse(201, {}, { whatsup: 'doc', name: paramValue(name), from: paramValue(from) }),
+            jsonResponse(201, {}, { hello: 'there', name: paramValue(name), from: paramValue(from) }),
         }),
 
         route(
@@ -40,7 +31,7 @@ export const createService = ({ db, gitHub }: Gateways): Endpoint =>
              */
             mapRoute(
               path('/foo/sha/', param('sha', alphaNumeric)),
-              resourceFromParam(db.getFooForSha, ([, sha]) => paramValue(sha)),
+              resourceFromParam(gateways.db.getFooForSha, ([, sha]) => paramValue(sha)),
             ),
 
             /**
@@ -48,7 +39,7 @@ export const createService = ({ db, gitHub }: Gateways): Endpoint =>
              */
             mapRoute(
               path('/foo/', param('id', alphaNumeric)),
-              resourceFromParam(db.getFoo, ([, fooId]) => paramValue(fooId)),
+              resourceFromParam(gateways.db.getFoo, ([, fooId]) => paramValue(fooId)),
             ),
           ),
           whenFound(
@@ -63,7 +54,7 @@ export const createService = ({ db, gitHub }: Gateways): Endpoint =>
         route(post(path('/foo')), async (_p, req) => {
           const result = await parseBody(req, parseJson(CreateFooBody));
           if (isSuccess(result)) {
-            return db.createFoo(result.value).then(
+            return gateways.db.createFoo(result.value).then(
               (foo) => jsonResponse(201, {}, { foo }),
               (error) => jsonResponse(424, {}, { error: error.message }),
             );
@@ -83,25 +74,6 @@ export const createService = ({ db, gitHub }: Gateways): Endpoint =>
          * Request /hello
          */
         route(get(exactPath('/hello')), () => jsonResponse(200, {}, { hello: 'world' })),
-
-        /**
-         * /admin/*
-         */
-        route(path('/admin/', param('rest', matchRest)), async ([_admin, rest], request) =>
-          mapResult(
-            await routes(
-              route(path('/apps'), async () =>
-                htmlDocument(200, {}, createElement(Admin, { installations: await gitHub.getInstallations() })),
-              ),
-              route(path('/users'), () => jsonResponse(200, {}, { lol: 'son' })),
-            )({
-              ...request,
-              url: `/${paramValue(rest)}`,
-            }),
-            (response) => response,
-            (failure) => jsonResponse(400, {}, { status: 'wtf', reason: failure.reason }),
-          ),
-        ),
       ),
     ),
 
@@ -110,38 +82,3 @@ export const createService = ({ db, gitHub }: Gateways): Endpoint =>
      */
     () => jsonResponse(404, {}, { status: 'Not Found folks' }),
   );
-
-async function readBuffer(stream: NodeJS.ReadableStream) {
-  const buffers: Buffer[] = [];
-  for await (const chunk of stream) {
-    buffers.push(Buffer.from(chunk));
-  }
-  return Buffer.concat(buffers);
-}
-
-async function htmlDocument(status: number, headers: OutgoingHttpHeaders, view: React.ReactElement): Promise<Response> {
-  const sheet = new ServerStyleSheet();
-  try {
-    const jsx = sheet.collectStyles(view);
-    const stream = sheet.interleaveWithNodeStream(renderToNodeStream(jsx));
-    const html = await readBuffer(stream);
-    return [
-      status,
-      { ...headers, 'content-type': 'text/html;charset=utf-8', 'content-length': html.length },
-      Readable.from(html),
-    ];
-  } finally {
-    sheet.seal();
-  }
-}
-
-function errorHandler(handler: Handler): Handler {
-  return async (request) => {
-    try {
-      return await handler(request);
-    } catch (error: unknown) {
-      const reason = error instanceof Error ? error : new Error(`Unknown error: ${error}`);
-      return success(await htmlDocument(500, {}, createElement(ServerException, { error: reason })));
-    }
-  };
-}

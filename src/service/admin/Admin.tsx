@@ -1,22 +1,8 @@
 import React from 'react';
-import styled from 'styled-components';
-import type { GitHubInstallation } from './data/github';
+import { GitHubInstallation } from '../../data/github';
 
-const HeaderDiv = styled.div`
-  background: red;
-`;
-
-export const Header = () => (
-  <HeaderDiv>
-    <h1>I am the header</h1>
-  </HeaderDiv>
-);
 export const Admin = ({ installations }: { installations: GitHubInstallation[] }) => (
-  <html>
-    <head>
-      <title>Hi</title>
-    </head>
-    <Header />
+  <>
     <p>Hello 🌍</p>
     <ul>
       {installations.map((installation) => (
@@ -30,15 +16,5 @@ export const Admin = ({ installations }: { installations: GitHubInstallation[] }
         </li>
       ))}
     </ul>
-  </html>
-);
-
-export const ServerException = ({ error }: { error: Error }) => (
-  <html>
-    <head>
-      <title>Server Exception: {error.message}</title>
-    </head>
-    <p>⚠️: {error.message}</p>
-    <pre>{error.stack}</pre>
-  </html>
+  </>
 );

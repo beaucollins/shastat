@@ -1,9 +1,6 @@
 import { Gateway } from '../data/gateway';
 import { GitHubGateway } from '../data/github';
-
-function notImplemented<T extends unknown[], R>(reason = 'not implemented') {
-  return (..._args: T): Promise<R> => Promise.reject(new Error(reason));
-}
+import { notImplemented } from '../data/notImplemented';
 
 export const defaultTestGateway: Gateway = {
   getFoo: notImplemented(),
@@ -18,6 +15,7 @@ export const overrideGateway = (overrides: Partial<Gateway>): Gateway => ({
 
 export const defaultTestGitHubGateway: GitHubGateway = {
   getInstallations: notImplemented(),
+  getApp: notImplemented(),
 };
 
 export const overrideGithubGateway = (overrides: Partial<GitHubGateway>): GitHubGateway => ({
