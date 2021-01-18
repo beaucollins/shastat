@@ -16,7 +16,22 @@ export const createService = (gateways: Gateways): Endpoint =>
   serve(
     errorHandler(
       routes(
+        /**
+         * GET /
+         */
+        home,
+        /**
+         * GET /login
+         */
+        auth(gateways),
+        /**
+         * /admin/*
+         */
         admin(gateways, '/admin/'),
+        route(
+          get(path('/admin')),
+          respondWithRedirect(() => '/admin/'),
+        ),
         /**
          * GET /
          */

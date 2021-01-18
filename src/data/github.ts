@@ -50,6 +50,7 @@ export function createGitHubGateway(): GitHubGateway {
   const octokit = new Octokit({
     userAgent: `cocollc-devops/${process.env.VERSION ?? `dev`}`,
   });
+
   return {
     getInstallations: api((auth) =>
       octokit.apps.listInstallations({
