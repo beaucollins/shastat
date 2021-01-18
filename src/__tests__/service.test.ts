@@ -1,86 +1,108 @@
-import { IncomingHttpHeaders } from 'http';
-import { GitHubInstallation } from '../data/github';
-import { readBody, readJSON } from './readBody';
+import { IncomingHttpHeaders, OutgoingHttpHeaders } from 'http';
+import { GitHubApp, GitHubInstallation } from '../data/github';
+import { readJSON, readBody } from './readBody';
 import { TestGateways, testRequest } from './testRequest';
+import { Readable } from 'stream';
 
 describe('service', () => {
+  type Expect<R> =
+    | [expect: [R] | [R, OutgoingHttpHeaders]]
+    | [expect: [R] | [R, OutgoingHttpHeaders], gateways: TestGateways];
+
   type TestCase<R> = Readonly<
+    | [method: 'GET', path: string, responseCode: number, headers: [IncomingHttpHeaders], ...rest: Expect<R>]
     | [
-        method: 'GET' | 'POST',
+        method: 'POST',
         path: string,
         responseCode: number,
-        requestBody: Buffer | null,
-        response: [R] | [R, IncomingHttpHeaders],
-        gatewayOverride: TestGateways,
-      ]
-    | [
-        method: 'GET' | 'POST',
-        path: string,
-        responseCode: number,
-        requestBody: Buffer | null,
-        response: [R] | [R, IncomingHttpHeaders],
+        headersAndBody: [IncomingHttpHeaders, NodeJS.ReadableStream],
+        ...rest: Expect<R>
       ]
   >;
 
   const jsonBuffer = (content: unknown) => Buffer.from(JSON.stringify(content));
 
-  const jsonCases: Readonly<TestCase<any>[]> = [
-    ['GET', '/hello', 200, null, [{ hello: 'world' }]],
-    ['GET', '/not-a-valid-url', 404, null, [{ status: 'Not Found folks' }]],
-    ['GET', '/add/2/to/2', 200, null, [{ sum: 4 }]],
-    ['GET', '/greet/alice/from/bob', 200, null, [{ from: 'bob', name: 'alice', message: 'some pattern' }]],
-    ['GET', '/foo/sha/abc', 404, null, [{ error: expect.any(String), id: 'abc', status: 'not_found' }]],
-    ['POST', '/foo', 424, Buffer.from('{}'), [{ error: /^Failed at 'sha'/ }]],
-    ['POST', '/greet/bob/from/alice', 201, Buffer.from('{}'), [{ from: 'alice', name: 'bob', whatsup: 'doc' }]],
-    ['POST', '/foo', 424, jsonBuffer({ sha: 'hello' }), [{ error: expect.any(String) }]],
+  const get = <T>(path: string, expectedResponse: number, headers: IncomingHttpHeaders, matchBody: T): TestCase<T> => {
+    return ['GET', path, expectedResponse, [headers], [matchBody]];
+  };
+
+  const jsonCases: Readonly<TestCase<Record<string, any>>[]> = [
+    get('/hello', 200, {}, { hello: 'world' }),
+    get('/not-a-valid-url', 404, {}, { status: 'Not Found folks' }),
+    get('/add/2/to/2', 200, {}, { sum: 4 }),
+    get('/greet/alice/from/bob', 200, {}, { from: 'bob', name: 'alice', message: 'some pattern' }),
+    get('/foo/sha/abc', 404, {}, { error: expect.any(String), id: 'abc', status: 'not_found' }),
+    ['POST', '/foo', 424, [{}, Readable.from('{}')], [{ error: /^Failed at 'sha'/ }]],
+    ['POST', '/greet/bob/from/alice', 201, [{}, Readable.from('{}')], [{ from: 'alice', name: 'bob', hello: 'there' }]],
+    ['POST', '/foo', 424, [{}, Readable.from(jsonBuffer({ sha: 'hello' }))], [{ error: expect.any(String) }]],
+    [
+      'GET',
+      '/admin/users',
+      200,
+      [{ cookie: 'token=lol' }],
+      [{ lol: 'son' }],
+      { auth: { verifyToken: () => Promise.resolve({}) } },
+    ],
+    [
+      'GET',
+      '/admin/other',
+      400,
+      [{ cookie: 'token=lol' }],
+      [{ status: '/admin/', reason: 'No matching result' }],
+      { auth: { verifyToken: () => Promise.resolve({}) } },
+    ],
     [
       'POST',
       '/foo',
       201,
-      jsonBuffer({ sha: String(Math.random() * 1000) }),
+      [{}, Readable.from(jsonBuffer({ sha: String(Math.random() * 1000) }))],
       [{ foo: expect.objectContaining({ id: 'lol', sha: expect.any(String) }) }],
       { db: { createFoo: ({ sha }) => Promise.resolve({ id: 'lol', sha }) } },
     ],
-    ['GET', '/foo/bar', 404, null, [{ error: expect.any(String) }]],
+    ['GET', '/foo/bar', 404, [{}], [{ error: expect.any(String) }]],
     [
       'GET',
       '/foo/bar',
       200,
-      null,
+      [{}],
       [{ foo: expect.objectContaining({ id: 'bar', sha: 'sha' }) }],
       { db: { getFoo: (id) => Promise.resolve({ id, sha: 'sha' }) } },
     ],
-    ['GET', '/admin/', 400, null, [{ status: 'wtf' }]],
-    ['GET', '/admin', 404, null, [{ status: 'Not Found folks' }]],
-    ['GET', '/admin/rest?hello=world', 400, null, [{ status: 'wtf' }]],
-    ['GET', '/admin/users', 200, null, [{ lol: 'son' }]],
   ];
 
-  it.each(jsonCases)(
-    '%s %s %d',
-    async (method, path, responseCode, requestBody, [responseMatch, responseHeaders], gateways = undefined) => {
-      const [statusCode, headers, body] = await testRequest(
-        method === 'POST' ? ['POST', 'application/json', 'identity', requestBody ?? Buffer.from('')] : method,
-        path,
-        gateways,
-      );
+  it.each(jsonCases)('JSON %s %s %d', async (...args) => {
+    const [statusCode, headers, body] = await testRequest(
+      args[0] === 'GET'
+        ? ['GET', args[3][0]]
+        : [
+            'POST',
+            { ...args[3][0], 'content-type': 'application/json', 'content-encoding': 'identity' },
+            args[3][1] ?? Readable.from(''),
+          ],
+      args[1],
+      args[5],
+    );
 
-      expect(statusCode).toEqual(responseCode);
-      if (responseHeaders) {
-        expect(headers).toMatchObject(responseHeaders);
-      }
-      expect(await readJSON(body)).toMatchObject(responseMatch);
-    },
-  );
+    expect(statusCode).toEqual(args[2]);
+    if (args[4].length === 2) {
+      expect(headers).toMatchObject(args[4][1]);
+    }
+    expect(await readJSON(body)).toMatchObject(args[4][0]);
+  });
 
   const htmlCases: TestCase<string | RegExp>[] = [
+    ['GET', '/', 200, [{}], [/Hello\./]],
+    ['GET', '/login', 200, [{}], [/Sign In/]],
+    ['GET', '/auth/validate', 400, [{}], [/Invalid code:/]],
+    ['GET', '/auth/validate?code=hello', 400, [{}], [/Invalid code:/]],
     [
       'GET',
       '/admin/apps',
       200,
-      null,
+      [{ cookie: 'token=lol' }],
       [/🌍/, { 'content-type': 'text/html;charset=utf-8' }],
       {
+        auth: { verifyToken: () => Promise.resolve({}) },
         gitHub: {
           getInstallations: () =>
             Promise.resolve<GitHubInstallation[]>([
@@ -106,23 +128,62 @@ describe('service', () => {
         },
       },
     ],
-    ['GET', '/admin/apps', 500, null, [/Error: not implemented/]],
+    ['GET', '/admin', 301, [{}], ['']],
+    [
+      'GET',
+      '/admin/apps',
+      500,
+      [{ cookie: 'token=lol' }],
+      [/Error: not implemented/],
+      { auth: { verifyToken: () => Promise.resolve({}) } },
+    ],
+    ['GET', '/admin/rest?hello=world', 403, [{}], ['Not Authorized']],
+    [
+      'GET',
+      '/admin/info',
+      200,
+      [{ cookie: `token=lol` }],
+      [/<h1>Info<\/h1>/],
+      {
+        auth: { verifyToken: () => Promise.resolve({}) },
+        gitHub: {
+          getApp: () =>
+            Promise.resolve<GitHubApp>({
+              id: 1,
+              node_id: '1',
+              name: 'name',
+              owner: null,
+              description: 'description',
+              external_url: 'mock://',
+              html_url: 'mock://',
+              created_at: '',
+              updated_at: '',
+              permissions: {},
+              events: [],
+            }),
+        },
+      },
+    ],
+    ['GET', '/admin/', 403, [{ cookie: 'token=lol' }], ['Not Authorized']],
   ];
 
-  it.each(htmlCases)(
-    `%s %s %d`,
-    async (method, path, responseCode, requestBody, [responseMatch, responseHeaders], gateways = undefined) => {
-      const [statusCode, headers, body] = await testRequest(
-        method === 'POST' ? ['POST', 'application/json', 'identity', requestBody ?? Buffer.from('')] : method,
-        path,
-        gateways,
-      );
+  it.each(htmlCases)(`HTML %s %s %d`, async (...args) => {
+    const [statusCode, headers, body] = await testRequest(
+      args[0] === 'GET'
+        ? ['GET', args[3][0]]
+        : [
+            'POST',
+            { ...args[3][0], 'content-type': 'application/json', 'content-encoding': 'identity' },
+            args[3][1] ?? Readable.from(''),
+          ],
+      args[1],
+      args[5],
+    );
 
-      expect(statusCode).toEqual(responseCode);
-      if (responseHeaders) {
-        expect(headers).toMatchObject(responseHeaders);
-      }
-      expect(await readBody(body)).toMatch(responseMatch);
-    },
-  );
+    expect(statusCode).toEqual(args[2]);
+    if (args[4].length === 2) {
+      expect(headers).toMatchObject(args[4][1]);
+    }
+    expect(await readBody(body)).toMatch(args[4][0]);
+  });
 });

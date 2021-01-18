@@ -16,7 +16,7 @@ import { Gateway } from './data/gateway';
 import { parseKeys } from './parseKeys';
 import { IncomingHttpHeaders } from 'http';
 
-async function readBuffer(readable: NodeJS.ReadableStream): Promise<Buffer> {
+export async function readBuffer(readable: NodeJS.ReadableStream): Promise<Buffer> {
   const buffer: Buffer[] = [];
   for await (const chunk of readable) {
     buffer.push(Buffer.from(chunk));

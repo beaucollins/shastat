@@ -3,11 +3,11 @@ import { sql } from './types';
 import { Foo } from './generated';
 import { ulid } from 'ulid';
 
-export interface Gateway {
+export type Gateway = {
   getFoo: (fooId: string) => Promise<Foo>;
   createFoo: (params: { sha: string }) => Promise<Foo>;
   getFooForSha: (sha: string) => Promise<Foo>;
-}
+};
 
 type DatabaseMethod<T> = (pool: DatabasePoolType) => T;
 

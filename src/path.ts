@@ -88,7 +88,12 @@ export function path<T extends (string | Parser<[Part, string], string>)[]>(
   const parsers = parts.map((part) => {
     return typeof part === 'string' ? token(part) : part;
   });
-  const parser: Parser<ParsedTuple<T>, string> = complete((url) => {
+
+  const parser: Parser<ParsedTuple<T>, string> = complete((urlWithQuery) => {
+    const queryIndex = urlWithQuery.indexOf('?');
+    // const query = queryIndex > -1 ? parseQuery(urlWithQuery.slice(queryIndex + 1)) : {};
+
+    const url = queryIndex > -1 ? urlWithQuery.slice(0, queryIndex) : urlWithQuery;
     const results: Array<ParsedTuple<T>[number]> = [];
     let path = url;
     for (const part of parsers) {

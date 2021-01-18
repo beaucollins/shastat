@@ -1,27 +1,34 @@
 import { Response } from '@fracture/serve';
 
-import { IncomingMessage, ServerResponse } from 'http';
+import { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'http';
 import { Gateway } from '../data/gateway';
 import { createService } from '../service';
-import { overrideGateway, overrideGithubGateway } from './testGateway';
+import { overrideAuth, overrideGateway, overrideGithubGateway } from './testGateway';
 import { Readable, Writable } from 'stream';
 import { GitHubGateway } from '../data/github';
+import { AuthGateway } from '../userIdentity';
 
-function createIncomingMessage(method: 'GET' | ['POST', string, string, Buffer] | 'HEAD', url: string) {
-  switch (method) {
-    case 'GET':
-    case 'HEAD': {
-      const stream = Readable.from(Buffer.from('')) as IncomingMessage;
-      stream.method = method;
+function createIncomingMessage(
+  method: ['GET', IncomingHttpHeaders] | ['POST', IncomingHttpHeaders, NodeJS.ReadableStream | undefined],
+  url: string,
+) {
+  switch (method[0]) {
+    case 'POST': {
+      if (method[2] == null) {
+        throw new Error('no body');
+      }
+      const stream = (method[2] ?? Readable.from('')) as IncomingMessage;
+      stream.method = 'POST';
       stream.url = url;
+      stream.headers = method[1];
       return stream;
     }
     default: {
-      const [verb, contentType, contentEncoding, body] = method;
-      const stream = Readable.from(body) as IncomingMessage;
+      const [verb, headers] = method;
+      const stream = Readable.from('') as IncomingMessage;
       stream.method = verb;
       stream.url = url;
-      stream.headers = { 'content-type': contentType, 'content-encoding': contentEncoding };
+      stream.headers = headers;
       return stream;
     }
   }
@@ -30,10 +37,11 @@ function createIncomingMessage(method: 'GET' | ['POST', string, string, Buffer] 
 export interface TestGateways {
   db?: Partial<Gateway>;
   gitHub?: Partial<GitHubGateway>;
+  auth?: Partial<AuthGateway>;
 }
 
 export async function testRequest(
-  method: 'GET' | 'HEAD' | ['POST', string, string, Buffer],
+  method: ['GET', IncomingHttpHeaders] | ['POST', IncomingHttpHeaders, NodeJS.ReadableStream | undefined],
   url: string,
   gateways: TestGateways = {},
 ): Promise<Response> {
@@ -42,6 +50,7 @@ export async function testRequest(
   const service = createService({
     db: overrideGateway(gateways.db ?? {}),
     gitHub: overrideGithubGateway(gateways.gitHub ?? {}),
+    auth: overrideAuth(gateways.auth ?? {}),
   });
   let buffer = Buffer.from('');
   const response = (new Writable({
