@@ -15,6 +15,8 @@ export type AuthGateway = {
 // JWT encoding and decoding
 
 const ALLOWED_ORGS = ['cocollc'];
+
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 const KEY = process.env.SHASTAT_IDENTITY_CERT!;
 
 export async function sessionTokenForAccessToken(gateways: Gateways, auth: GitHubAccessToken): Promise<string> {

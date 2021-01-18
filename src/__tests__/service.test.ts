@@ -1,9 +1,8 @@
 import { IncomingHttpHeaders, OutgoingHttpHeaders } from 'http';
-import { GitHubApp, GitHubInstallation, GitHubOrganization, GitHubUser } from '../data/github';
+import { GitHubApp, GitHubInstallation } from '../data/github';
 import { readJSON, readBody } from './readBody';
 import { TestGateways, testRequest } from './testRequest';
 import { Readable } from 'stream';
-import { verifyToken } from '../userIdentity';
 
 describe('service', () => {
   type Expect<R> =
