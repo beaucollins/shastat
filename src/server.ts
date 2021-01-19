@@ -16,7 +16,7 @@ if (require.main === module) {
   const gateways: Gateways = {
     db: createDatabaseGateway(createPool()),
     gitHub: createGitHubGateway(),
-    auth: createAuthGateway(createKeyProvider()),
+    auth: createAuthGateway(createKeyProvider(process.env.SHASTAT_IDENTITY_CERT!)),
   };
   const http = listen(gateways, process.env['PORT'] ?? '6000').on('listening', () => {
     process.stderr.write(format('Listening %o\n', http.address()));

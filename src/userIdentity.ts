@@ -59,11 +59,10 @@ function verifyToken(keyProvider: KeyProvider): (token: string) => Promise<UserT
     keyProvider().then((key) => jwtDecrypt(token, key, { issuer: ISSUER }).then((token) => token.payload));
 }
 
-export function createKeyProvider(): KeyProvider {
+export function createKeyProvider(pem: string | Buffer): KeyProvider {
   const key = new Promise<KeyObject>((resolve, reject) => {
     try {
-      const key = process.env.SHASTAT_IDENTITY_CERT!;
-      resolve(createPrivateKey({ key, format: 'pem' }));
+      resolve(createPrivateKey({ key: pem, format: 'pem' }));
     } catch (error) {
       reject(error);
     }

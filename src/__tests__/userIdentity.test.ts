@@ -1,15 +1,13 @@
-import { createPrivateKey } from 'crypto';
 import { createReadStream } from 'fs';
 import { resolve } from 'path';
 import { GitHubAccessToken, GitHubOrganization, GitHubUser } from '../data/github';
 import { readBuffer } from '../parseBody';
-import { createAuthGateway, sessionTokenForAccessToken } from '../userIdentity';
+import { createAuthGateway, createKeyProvider, sessionTokenForAccessToken } from '../userIdentity';
 import { overrideGateway, overrideGithubGateway } from './testGateway';
 
 describe('userIdentity', () => {
-  const privateKey = readBuffer(createReadStream(resolve(__dirname, '../jwt/__tests__/key.pem'))).then(
-    createPrivateKey,
-  );
+  const pem = createReadStream(resolve(__dirname, '../jwt/__tests__/key.pem'));
+  const provider = readBuffer(pem).then((key) => createKeyProvider(key));
 
   it('creates a token', async () => {
     const authData: GitHubAccessToken = {
@@ -22,7 +20,7 @@ describe('userIdentity', () => {
     };
 
     const gateways = {
-      auth: createAuthGateway(() => privateKey),
+      auth: createAuthGateway(await provider),
       gitHub: overrideGithubGateway({
         getAuthenticatedUser: () => Promise.resolve({} as GitHubUser),
         getAuthenticatedUserOrganizations: () => Promise.resolve([{ login: 'cocollc' } as GitHubOrganization]),
@@ -34,8 +32,30 @@ describe('userIdentity', () => {
     expect(token).toEqual(expect.any(String));
   });
 
+  it('fails to create token when no matching organization', async () => {
+    const authData: GitHubAccessToken = {
+      access_token: 'ABCD',
+      expires_in: '5 min',
+      refresh_token: 'refresh-token',
+      refresh_token_expires_in: 'now',
+      scope: '',
+      token_type: 'access_token',
+    };
+
+    const gateways = {
+      auth: createAuthGateway(await provider),
+      gitHub: overrideGithubGateway({
+        getAuthenticatedUser: () => Promise.resolve({} as GitHubUser),
+        getAuthenticatedUserOrganizations: () => Promise.resolve([{ login: 'other' } as GitHubOrganization]),
+      }),
+      db: overrideGateway({}),
+    };
+
+    await expect(sessionTokenForAccessToken(gateways, authData)).rejects.toThrow('Not member of approved organization');
+  });
+
   it('signs and verifies tokens', async () => {
-    const gateway = createAuthGateway(() => privateKey);
+    const gateway = createAuthGateway(await provider);
     const token = await gateway.createToken(
       {
         access_token: 'mock-access-token',
@@ -56,5 +76,10 @@ describe('userIdentity', () => {
       'urn:com.github:refresh_token': 'mock-refresh-token',
       'urn:com.github:access_token': 'mock-access-token',
     });
+  });
+
+  it('createKeyProvider', async () => {
+    const provider = createKeyProvider('-----BEGIN RSA PRIVATE KEY-----\n-----END RSA PRIVATE KEY-----');
+    await expect(provider()).rejects.toThrowError(/Failed to read private key/);
   });
 });
