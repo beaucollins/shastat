@@ -1,13 +1,18 @@
-import { IncomingHttpHeaders, OutgoingHttpHeaders } from 'http';
-import { GitHubApp, GitHubInstallation } from '../data/github';
+import { IncomingHttpHeaders } from 'http';
+import { GitHubAccessToken, GitHubApp, GitHubInstallation, GitHubOrganization, GitHubUser } from '../data/github';
 import { readJSON, readBody } from './readBody';
 import { TestGateways, testRequest } from './testRequest';
 import { Readable } from 'stream';
+import { createAuthGateway } from '../userIdentity';
+import { createReadStream } from 'fs';
+import { resolve } from 'path';
+import { readBuffer } from '../parseBody';
+import { createPrivateKey } from 'crypto';
 
 describe('service', () => {
   type Expect<R> =
-    | [expect: [R] | [R, OutgoingHttpHeaders]]
-    | [expect: [R] | [R, OutgoingHttpHeaders], gateways: TestGateways];
+    | [expect: [R] | [R, { [key: string]: string | RegExp }]]
+    | [expect: [R] | [R, { [key: string]: string | RegExp }], gateways: TestGateways];
 
   type TestCase<R> = Readonly<
     | [method: 'GET', path: string, responseCode: number, headers: [IncomingHttpHeaders], ...rest: Expect<R>]
@@ -19,6 +24,9 @@ describe('service', () => {
         ...rest: Expect<R>
       ]
   >;
+
+  const pem = createReadStream(resolve(__dirname, '../jwt/__tests__/key.pem'));
+  const provider = () => readBuffer(pem).then((key) => createPrivateKey({ key, format: 'pem' }));
 
   const jsonBuffer = (content: unknown) => Buffer.from(JSON.stringify(content));
 
@@ -97,6 +105,21 @@ describe('service', () => {
     ['GET', '/auth/validate?code=hello', 400, [{}], [/Invalid code:/]],
     [
       'GET',
+      '/auth/validate?code=succeed',
+      301,
+      [{}],
+      ['', { location: '/', 'set-cookie': /token=/ }],
+      {
+        auth: createAuthGateway(provider),
+        gitHub: {
+          getAuthenticatedUser: () => Promise.resolve({ login: 'succeed' } as GitHubUser),
+          getAuthenticatedUserOrganizations: () => Promise.resolve([{ login: 'cocollc' } as GitHubOrganization]),
+          exchangeOAuthCode: () => Promise.resolve({ access_token: 'access-token' } as GitHubAccessToken),
+        },
+      },
+    ],
+    [
+      'GET',
       '/admin/apps',
       200,
       [{ cookie: 'token=lol' }],
@@ -128,7 +151,7 @@ describe('service', () => {
         },
       },
     ],
-    ['GET', '/admin', 301, [{}], ['']],
+    ['GET', '/admin', 301, [{}], ['', { location: '/admin/' }]],
     [
       'GET',
       '/admin/apps',

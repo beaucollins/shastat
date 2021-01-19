@@ -29,7 +29,8 @@ export const defaultTestGitHubGateway: GitHubGateway = {
 export const overrideGithubGateway = override(defaultTestGitHubGateway);
 
 export const defaultTestAuthGateway: AuthGateway = {
-  verifyToken: () => Promise.reject('Bad token'),
+  verifyToken: notImplemented(),
+  createToken: notImplemented(),
 };
 
 export const overrideAuth = override(defaultTestAuthGateway);

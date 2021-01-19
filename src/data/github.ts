@@ -1,10 +1,16 @@
 import { Octokit } from '@octokit/rest';
 import { Parser, objectOf, isString, mapResult } from '@fracture/parse';
 import { components } from '@octokit/openapi-types';
-import { sign } from 'jsonwebtoken';
 import { request } from 'https';
 import { encode, parse } from 'querystring';
 import { readBuffer } from '../parseBody';
+import SignJWT from 'jose/jwt/sign';
+import { createPrivateKey } from 'crypto';
+
+export type JWTSettings = {
+  gitHubAppCert: string;
+  gitHubAppId: string;
+};
 
 export type GitHubInstallation = components['schemas']['installation'];
 
@@ -38,26 +44,27 @@ export type GitHubGateway = {
 };
 
 function api<T, Input extends unknown[], Return extends { data: T }>(
+  settings: JWTSettings,
   method: (header: { authorization: string }, ...input: Input) => Promise<Return>,
 ): (...input: Input) => Promise<T> {
   return (...args) =>
-    createGitHubJWT()
+    createGitHubJWT(settings)
       .then((header) => method(header, ...args))
       .then((r) => r.data);
 }
 
-export function createGitHubGateway(): GitHubGateway {
+export function createGitHubGateway(settings: JWTSettings): GitHubGateway {
   const octokit = new Octokit({
     userAgent: `cocollc-devops/${process.env.VERSION ?? `dev`}`,
   });
 
   return {
-    getInstallations: api((auth) =>
+    getInstallations: api(settings, (auth) =>
       octokit.apps.listInstallations({
         headers: { ...auth },
       }),
     ),
-    getApp: api((auth) => octokit.apps.getAuthenticated({ headers: { ...auth } })),
+    getApp: api(settings, (auth) => octokit.apps.getAuthenticated({ headers: { ...auth } })),
     exchangeOAuthCode: (code) => {
       return new Promise((resolve, reject) => {
         const body = encode({
@@ -106,23 +113,13 @@ export function createGitHubGateway(): GitHubGateway {
   };
 }
 
-function createGitHubJWT(): Promise<{ authorization: string }> {
-  return new Promise((resolve, reject) => {
-    sign(
-      { foo: 'bar' },
-      process.env.GITHUB_APP_CERT!,
-      { algorithm: 'RS256', expiresIn: '5 minutes', issuer: process.env.GITHUB_APP_ID! },
-      (error, encoded) => {
-        if (error != null) {
-          reject(error);
-          return;
-        }
-        if (encoded == null) {
-          reject(new Error('Failed to sign'));
-          return;
-        }
-        resolve({ authorization: `bearer ${encoded}` });
-      },
-    );
-  });
+function createGitHubJWT(settings: JWTSettings): Promise<{ authorization: string }> {
+  const privateKey = createPrivateKey({ key: settings.gitHubAppCert, format: 'pem' });
+  return new SignJWT({ foo: 'bar' })
+    .setProtectedHeader({ alg: 'RS256' })
+    .setIssuer(settings.gitHubAppId)
+    .setIssuedAt()
+    .setExpirationTime('5 minutes')
+    .sign(privateKey)
+    .then((encoded) => ({ authorization: `bearer ${encoded}` }));
 }
