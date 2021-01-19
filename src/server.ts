@@ -13,11 +13,17 @@ export const listen = (gateways: Gateways, port: number | string): Server => {
 };
 
 if (require.main === module) {
+  /* eslint-disable @typescript-eslint/no-non-null-assertion */
   const gateways: Gateways = {
     db: createDatabaseGateway(createPool()),
-    gitHub: createGitHubGateway(),
+    gitHub: createGitHubGateway({
+      gitHubAppCert: process.env.GITHUB_APP_CERT!,
+      gitHubAppId: process.env.GITHUB_APP_ID!,
+    }),
     auth: createAuthGateway(createKeyProvider(process.env.SHASTAT_IDENTITY_CERT!)),
   };
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
+
   const http = listen(gateways, process.env['PORT'] ?? '6000').on('listening', () => {
     process.stderr.write(format('Listening %o\n', http.address()));
   });
