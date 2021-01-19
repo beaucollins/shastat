@@ -1,5 +1,6 @@
-import { AddressInfo } from 'net';
 import { IncomingHttpHeaders, request, Server } from 'http';
+import { AddressInfo } from 'net';
+
 import { listen } from '../server';
 import { defaultTestAuthGateway, defaultTestGateway, defaultTestGitHubGateway } from './testGateway';
 

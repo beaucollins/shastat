@@ -1,5 +1,6 @@
 import { setupTypeGen } from '@slonik/typegen';
 import { resolve } from 'path';
+
 import { knownTypes } from './generated';
 
 export const { sql, poolConfig } = setupTypeGen({

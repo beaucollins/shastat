@@ -1,5 +1,5 @@
+import { failure, mapFailure, Parser, Success, success } from '@fracture/parse';
 import { Request } from '@fracture/serve';
-import { Parser, Success, mapFailure, failure, success } from '@fracture/parse';
 import { parse } from 'querystring';
 
 export const parseQueryString: (url: string) => Success<Record<string, string | string[]>> = (url) => {

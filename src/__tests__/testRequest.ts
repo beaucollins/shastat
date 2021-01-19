@@ -1,12 +1,12 @@
 import { Response } from '@fracture/serve';
-
 import { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'http';
-import { Gateway } from '../data/gateway';
-import { createService } from '../service';
-import { overrideAuth, overrideGateway, overrideGithubGateway } from './testGateway';
 import { Readable, Writable } from 'stream';
+
+import { Gateway } from '../data/gateway';
 import { GitHubGateway } from '../data/github';
+import { createService } from '../service';
 import { AuthGateway } from '../userIdentity';
+import { overrideAuth, overrideGateway, overrideGithubGateway } from './testGateway';
 
 function createIncomingMessage(
   method: ['GET', IncomingHttpHeaders] | ['POST', IncomingHttpHeaders, NodeJS.ReadableStream | undefined],

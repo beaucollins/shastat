@@ -1,4 +1,4 @@
-import { Parser, Success, failure, success, isSuccess, isFailure, mapParser } from '@fracture/parse';
+import { failure, isFailure, isSuccess, mapParser, Parser, Success, success } from '@fracture/parse';
 
 export type Tokenizer<T> = Parser<[T, string], string>;
 

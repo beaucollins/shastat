@@ -1,4 +1,4 @@
-import { Parser, ParserType, isFailure, failure, success } from '@fracture/parse';
+import { failure, isFailure, Parser, ParserType, success } from '@fracture/parse';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseKeys<T extends { [K: string]: Parser<unknown, any> }>(

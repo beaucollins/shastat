@@ -1,5 +1,6 @@
 import { createServer, Server } from 'http';
 import { format } from 'util';
+
 import { createPool } from './data/createPool';
 import { createDatabaseGateway } from './data/gateway';
 import { Gateways } from './data/gateways';

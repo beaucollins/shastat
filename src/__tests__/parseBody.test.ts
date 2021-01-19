@@ -1,9 +1,9 @@
-import { Request } from '@fracture/serve';
 import { failure } from '@fracture/parse';
+import { Request } from '@fracture/serve';
+import { Readable } from 'stream';
 
 import { JSONParser, parseBody } from '../parseBody';
 import { requireFailure } from './assertResult';
-import { Readable } from 'stream';
 
 describe('JSONParser', () => {
   it.each(['{', 'some json'])('fails with invalid JSON', (json) => {

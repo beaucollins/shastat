@@ -1,13 +1,14 @@
-import { IncomingHttpHeaders } from 'http';
-import { GitHubAccessToken, GitHubApp, GitHubInstallation, GitHubOrganization, GitHubUser } from '../data/github';
-import { readJSON, readBody } from './readBody';
-import { TestGateways, testRequest } from './testRequest';
-import { Readable } from 'stream';
-import { createAuthGateway } from '../userIdentity';
-import { createReadStream } from 'fs';
-import { resolve } from 'path';
-import { readBuffer } from '../parseBody';
 import { createPrivateKey } from 'crypto';
+import { createReadStream } from 'fs';
+import { IncomingHttpHeaders } from 'http';
+import { resolve } from 'path';
+import { Readable } from 'stream';
+
+import { GitHubAccessToken, GitHubApp, GitHubInstallation, GitHubOrganization, GitHubUser } from '../data/github';
+import { readBuffer } from '../parseBody';
+import { createAuthGateway } from '../userIdentity';
+import { readBody, readJSON } from './readBody';
+import { TestGateways, testRequest } from './testRequest';
 
 describe('service', () => {
   type Expect<R> =

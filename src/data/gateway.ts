@@ -1,7 +1,8 @@
 import { DatabasePoolType } from 'slonik';
-import { sql } from './types';
-import { Foo } from './generated';
 import { ulid } from 'ulid';
+
+import { Foo } from './generated';
+import { sql } from './types';
 
 export type Gateway = {
   getFoo: (fooId: string) => Promise<Foo>;
