@@ -128,7 +128,7 @@ describe('service', () => {
         },
       },
     ],
-    ['GET', '/admin', 301, [{}], ['']],
+    ['GET', '/admin', 301, [{}], ['', { location: '/admin/' }]],
     [
       'GET',
       '/admin/apps',

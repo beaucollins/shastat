@@ -33,22 +33,6 @@ export const createService = (gateways: Gateways): Endpoint =>
           respondWithRedirect(() => '/admin/'),
         ),
         /**
-         * GET /
-         */
-        home,
-        /**
-         * GET /login
-         */
-        auth(gateways),
-        /**
-         * /admin/*
-         */
-        admin(gateways, '/admin/'),
-        route(
-          get(path('/admin')),
-          respondWithRedirect(() => '/admin/'),
-        ),
-        /**
          * Request /greet/alice/from/bob
          */
         routePath(path('/greet/', param('name', alphaNumeric), '/from/', param('from', alphaNumeric)), {
