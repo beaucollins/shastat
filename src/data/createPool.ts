@@ -1,4 +1,5 @@
 import { createPool as createSlonikPool, DatabasePoolType } from 'slonik';
+
 import { poolConfig } from './types';
 
 const ENV_KEY_NAME = 'POSTGRES_CONNECTION_STRING';

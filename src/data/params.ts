@@ -1,5 +1,5 @@
 import { Success, success } from '@fracture/parse';
-import { Response, Request } from '@fracture/serve';
+import { Request, Response } from '@fracture/serve';
 
 type Found<T> = [status: 'found', resource: T];
 type NotFound<T> = [status: 'not_found', param: T, reason: Error];

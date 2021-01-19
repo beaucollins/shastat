@@ -1,7 +1,7 @@
-import { Handler } from '@fracture/serve';
 import { success } from '@fracture/parse';
-
+import { Handler } from '@fracture/serve';
 import { createElement } from 'react';
+
 import { htmlDocument } from './htmlDocument';
 import { ServerException } from './views';
 

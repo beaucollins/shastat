@@ -1,5 +1,5 @@
-import { Route, Request } from '@fracture/serve';
-import { Result, isSuccess, failure } from '@fracture/parse';
+import { failure, isSuccess, Result } from '@fracture/parse';
+import { Request, Route } from '@fracture/serve';
 
 type RouteType<T> = T extends Route<infer U> ? U : never;
 

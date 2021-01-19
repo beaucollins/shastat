@@ -1,8 +1,8 @@
+import { Response } from '@fracture/serve';
 import { OutgoingHttpHeaders } from 'http';
 import { renderToNodeStream } from 'react-dom/server';
-import { ServerStyleSheet } from 'styled-components';
-import { Response } from '@fracture/serve';
 import { Readable } from 'stream';
+import { ServerStyleSheet } from 'styled-components';
 
 async function readBuffer(stream: NodeJS.ReadableStream) {
   const buffers: Buffer[] = [];

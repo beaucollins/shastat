@@ -1,10 +1,11 @@
-import { Request } from '@fracture/serve';
 import { success } from '@fracture/parse';
-import { Socket } from 'net';
+import { Request } from '@fracture/serve';
 import { IncomingMessage } from 'http';
+import { Socket } from 'net';
+
 import { alphaNumeric, numeric, param, path, PathParser, routePath, urlSlug } from '../path';
-import { requireFailure, requireSuccess } from './assertResult';
 import { complete } from '../tokenizer';
+import { requireFailure, requireSuccess } from './assertResult';
 
 const requestFor = (url: string, method = 'GET'): Request => {
   return {

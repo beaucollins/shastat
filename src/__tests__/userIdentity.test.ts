@@ -1,5 +1,6 @@
 import { createReadStream } from 'fs';
 import { resolve } from 'path';
+
 import { GitHubAccessToken, GitHubOrganization, GitHubUser } from '../data/github';
 import { readBuffer } from '../parseBody';
 import { createAuthGateway, createKeyProvider, sessionTokenForAccessToken } from '../userIdentity';

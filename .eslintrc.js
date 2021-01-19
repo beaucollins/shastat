@@ -9,7 +9,7 @@ module.exports = {
     ecmaVersion: 12,
     sourceType: 'module',
   },
-  plugins: ['prettier'],
+  plugins: ['prettier', 'simple-import-sort'],
   rules: {
     'prettier/prettier': [2],
   },
@@ -21,6 +21,7 @@ module.exports = {
       plugins: ['@typescript-eslint'],
       rules: {
         '@typescript-eslint/no-unused-vars': [2, { argsIgnorePattern: '^_' }],
+        'simple-import-sort/imports': 'error',
       },
     },
     {

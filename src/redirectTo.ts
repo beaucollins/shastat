@@ -1,4 +1,5 @@
-import { Response, Request, Responder } from '@fracture/serve';
+import { Request, Responder, Response } from '@fracture/serve';
+
 import { emptyBody } from './emptyBody';
 
 export function redirectTo(location: string): Response {

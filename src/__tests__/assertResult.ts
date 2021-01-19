@@ -1,4 +1,4 @@
-import { Result, isSuccess, Success, Failure } from '@fracture/parse';
+import { Failure, isSuccess, Result, Success } from '@fracture/parse';
 
 export function requireSuccess<T, F>(result: Result<T, F>): Success<T> {
   if (!isSuccess(result)) {

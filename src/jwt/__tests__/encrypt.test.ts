@@ -1,12 +1,12 @@
-import EncryptJWT from 'jose/jwt/encrypt';
+import { createPrivateKey, createPublicKey } from 'crypto';
+import { createReadStream } from 'fs';
 import jwtDecrypt from 'jose/jwt/decrypt';
+import EncryptJWT from 'jose/jwt/encrypt';
 import SignJWT from 'jose/jwt/sign';
 import jwtVerify from 'jose/jwt/verify';
-
-import { createReadStream } from 'fs';
-import { readBuffer } from '../../parseBody';
-import { createPrivateKey, createPublicKey } from 'crypto';
 import { resolve as resolvePath } from 'path';
+
+import { readBuffer } from '../../parseBody';
 
 const readBufferFrom = (fileName: string) => readBuffer(createReadStream(resolvePath(__dirname, fileName)));
 

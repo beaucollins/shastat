@@ -1,11 +1,12 @@
-import { Octokit } from '@octokit/rest';
-import { Parser, objectOf, isString, mapResult } from '@fracture/parse';
+import { isString, mapResult, objectOf, Parser } from '@fracture/parse';
 import { components } from '@octokit/openapi-types';
-import { request } from 'https';
-import { encode, parse } from 'querystring';
-import { readBuffer } from '../parseBody';
-import SignJWT from 'jose/jwt/sign';
+import { Octokit } from '@octokit/rest';
 import { createPrivateKey } from 'crypto';
+import { request } from 'https';
+import SignJWT from 'jose/jwt/sign';
+import { encode, parse } from 'querystring';
+
+import { readBuffer } from '../parseBody';
 
 export type JWTSettings = {
   gitHubAppCert: string;

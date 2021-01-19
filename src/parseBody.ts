@@ -1,20 +1,20 @@
-import { Request } from '@fracture/serve';
 import {
+  failure,
+  isString,
+  mapFailure,
+  mapParser,
+  mapResult,
+  objectOf,
   Parser,
   Result,
   success,
-  failure,
-  mapParser,
-  objectOf,
-  isString,
-  mapResult,
-  mapFailure,
 } from '@fracture/parse';
+import { Request } from '@fracture/serve';
+import { IncomingHttpHeaders } from 'http';
 
-import { parseContentType, ContentType } from './contentType';
+import { ContentType, parseContentType } from './contentType';
 import { Gateway } from './data/gateway';
 import { parseKeys } from './parseKeys';
-import { IncomingHttpHeaders } from 'http';
 
 export async function readBuffer(readable: NodeJS.ReadableStream): Promise<Buffer> {
   const buffer: Buffer[] = [];
