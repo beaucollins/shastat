@@ -24,10 +24,10 @@ const ALLOWED_ORGANIZATIONS = ['cocollc'];
 const ISSUER = `urn:pub.collins.shastat`;
 
 export async function sessionTokenForAccessToken(gateways: Gateways, auth: GitHubAccessToken): Promise<string> {
-  auth.access_token;
   const user = await gateways.gitHub.getAuthenticatedUser(auth.access_token);
   const organizations = await gateways.gitHub.getAuthenticatedUserOrganizations(auth.access_token, user.login);
   const allowedOrg = organizations.find((organization) => ALLOWED_ORGANIZATIONS.indexOf(organization.login) > -1);
+
   if (allowedOrg == null) {
     return Promise.reject(new Error('Not member of approved organization'));
   }

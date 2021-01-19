@@ -10,6 +10,7 @@ import { inLayout } from '../../inLayout';
 import { Layout } from './Layout';
 import { Readable } from 'stream';
 import { UserToken } from '../../userIdentity';
+import { respondWithRedirect } from '../../redirectTo';
 
 function identity<T>(value: T): T {
   return value;
@@ -39,28 +40,34 @@ function authenticated<T>(
  * /admin/*
  */
 export const admin = <T extends string>({ gitHub, auth }: Gateways, prefix: T): Handler =>
-  route(
-    path(prefix as string, param('rest', matchRest)),
-    authenticated(auth.verifyToken, async ({ token, context: [_admin, rest] }, request) =>
-      mapResult(
-        await routes(
-          route(get(path('/apps')), async (_path) =>
-            adminLayout(200, {}, <Admin installations={await gitHub.getInstallations()} />, {
-              pageTitle: 'Installations',
-            }),
-          ),
-          route(get(path('/users')), () => jsonResponse(200, {}, { lol: 'son' })),
-          route(get(path('/info')), async () =>
-            adminLayout(200, {}, <AppInfo app={await gitHub.getApp()} />, {
-              pageTitle: '',
-            }),
-          ),
-        )({
-          ...request,
-          url: `/${paramValue(rest)}`,
-        }),
-        identity,
-        (failure) => jsonResponse(400, {}, { status: prefix, reason: failure.reason }),
+  routes(
+    route(
+      path(prefix as string, param('rest', matchRest)),
+      authenticated(auth.verifyToken, async ({ token, context: [_admin, rest] }, request) =>
+        mapResult(
+          await routes(
+            route(get(path('/apps')), async (_path) =>
+              adminLayout(200, {}, <Admin installations={await gitHub.getInstallations()} />, {
+                pageTitle: 'Installations',
+              }),
+            ),
+            route(get(path('/users')), () => jsonResponse(200, {}, { lol: 'son' })),
+            route(get(path('/info')), async () =>
+              adminLayout(200, {}, <AppInfo app={await gitHub.getApp()} />, {
+                pageTitle: '',
+              }),
+            ),
+          )({
+            ...request,
+            url: `/${paramValue(rest)}`,
+          }),
+          identity,
+          (failure) => jsonResponse(400, {}, { status: prefix, reason: failure.reason }),
+        ),
       ),
+    ),
+    route(
+      get(path('/admin')),
+      respondWithRedirect(() => '/admin/'),
     ),
   );

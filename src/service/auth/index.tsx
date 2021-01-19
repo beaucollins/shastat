@@ -30,7 +30,7 @@ export const auth = (gateways: Gateways) =>
             const authToken = await gateways.gitHub.exchangeOAuthCode(code);
             // Cookie this
             const token = await sessionTokenForAccessToken(gateways, authToken);
-            return [301, { location: '/', 'Set-Cookie': `token=${token}; Path=/` }, emptyBody()];
+            return [301, { location: '/', 'set-cookie': `token=${token}; Path=/` }, emptyBody()];
           } catch (error) {
             return renderView(400, {}, <InvalidCode error={error} />);
           }

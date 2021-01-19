@@ -10,7 +10,6 @@ import { errorHandler } from './errorHandler';
 import { admin } from './service/admin';
 import { auth } from './service/auth';
 import { home } from './service/home';
-import { respondWithRedirect } from './redirectTo';
 
 export const createService = (gateways: Gateways): Endpoint =>
   serve(
@@ -28,10 +27,6 @@ export const createService = (gateways: Gateways): Endpoint =>
          * /admin/*
          */
         admin(gateways, '/admin/'),
-        route(
-          get(path('/admin')),
-          respondWithRedirect(() => '/admin/'),
-        ),
         /**
          * Request /greet/alice/from/bob
          */
