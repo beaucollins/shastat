@@ -5,20 +5,15 @@ import jwtVerify from 'jose/jwt/verify';
 
 import { createReadStream } from 'fs';
 import { readBuffer } from '../../parseBody';
-import { createPrivateKey, createPublicKey, KeyObject } from 'crypto';
+import { createPrivateKey, createPublicKey } from 'crypto';
 import { resolve as resolvePath } from 'path';
 
-const loadPrivateKey = new Promise<KeyObject>((resolve) => {
-  readBuffer(createReadStream(resolvePath(__dirname, './key.pem'))).then((buffer) => {
-    resolve(createPrivateKey({ key: buffer, format: 'pem' }));
-  });
-});
+const readBufferFrom = (fileName: string) => readBuffer(createReadStream(resolvePath(__dirname, fileName)));
 
-const loadPublicKey = new Promise<KeyObject>((resolve) => {
-  readBuffer(createReadStream(resolvePath(__dirname, './key.pem.pub'))).then((buffer) => {
-    resolve(createPublicKey(buffer));
-  });
-});
+const loadPrivateKey = readBufferFrom('./key.pem').then((buffer) => createPrivateKey({ key: buffer, format: 'pem' }));
+
+const loadPublicKey = readBufferFrom('./key.pem.pub').then(createPublicKey);
+
 describe('encrypt', () => {
   it('works', async () => {
     const encrypted = new EncryptJWT({ hello: 'world' })

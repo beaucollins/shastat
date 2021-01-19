@@ -40,6 +40,7 @@ function createToken(
   return (accessToken, _user, organization) => {
     return keyProvider().then((key) =>
       new EncryptJWT({
+        'urn:com.github:access_token': accessToken.access_token,
         'urn:com.github:organization_id': organization.id,
         'urn:com.github:organization_login': organization.login,
         'urn:com.github:refresh_token': accessToken.refresh_token,
@@ -58,7 +59,7 @@ function verifyToken(keyProvider: KeyProvider): (token: string) => Promise<UserT
     keyProvider().then((key) => jwtDecrypt(token, key, { issuer: ISSUER }).then((token) => token.payload));
 }
 
-function createKeyProvider(): KeyProvider {
+export function createKeyProvider(): KeyProvider {
   const key = new Promise<KeyObject>((resolve, reject) => {
     try {
       const key = process.env.SHASTAT_IDENTITY_CERT!;
@@ -71,8 +72,7 @@ function createKeyProvider(): KeyProvider {
   return () => key;
 }
 
-export function createAuthGateway(): AuthGateway {
-  const keyProvider = createKeyProvider();
+export function createAuthGateway(keyProvider: KeyProvider): AuthGateway {
   return {
     verifyToken: verifyToken(keyProvider),
     createToken: createToken(keyProvider),
